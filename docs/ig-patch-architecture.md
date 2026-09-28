@@ -1,0 +1,133 @@
+# Resilient Instagram patch architecture
+
+How this bundle resolves obfuscated Instagram bytecode so a version bump is a resolver diff,
+not an archaeology session. Grounded in the 448.0.0.52.84 port and the Twitter/NewX lessons
+that already live in `piko-patches-library`.
+
+## The failure modes this replaces
+
+The legacy piko entity layer works, but every release bump costs days because of four
+patterns. They are all fixable at the shared resolution layer without rewriting feature
+patches.
+
+1. **Placeholder strings rewritten by position.** Extension classes contain sentinel names
+   (`"methodName"`, `"A0T"`) and decoder patches replace the *n-th* `const-string` in a
+   method. Reordering or adding a string shifts the replacement silently.
+2. **Silent optional resolution.** `fingerprint.matchOrNull()?.let { ... }` skips a mutation
+   when a release changes, so the patch reports `Applied` while the extension keeps a
+   sentinel name and dies later ("Invoke failed: A0T" was exactly this).
+3. **Mutable patch-time globals.** `Decoder.kt` stores `MEDIA_CLASS_NAME`, `CURRENT_MEDIA_FIELD`,
+   … as `Delegates.notNull()` vars. Resolution order becomes load-bearing and cannot be
+   re-run or cached per target.
+4. **Runtime reflection over release classes.** `Entity.getMethod` calls
+   `getDeclaredMethod(name, params[i].getClass())`. Exact runtime classes, no supertype
+   search, and parameter polymorphism breaks it without a compile error.
+
+## Target architecture
+
+```
+extensions (runtime)            compileOnly stable stubs only
+        ▲
+        │  exact descriptors injected at patch time
+        │
+InstagramModels (patch-time)    typed Resolved* data classes, cached per BytecodePatchContext
+        ▲
+        │  shape / data-flow / semantic anchors
+        │
+target APK bytecode             the only source of truth
+```
+
+### 1. One resolution layer, no globals
+
+Mirror NewX's `models/` package: a single `InstagramModels` object that resolves every
+obfuscated owner/member once and returns typed data classes
+(`ResolvedInstagramMediaModels`, `ResolvedInstagramUserModels`, `ResolvedInstagramDialogModels`,
+…). Resolution is cached per `BytecodePatchContext` and re-runnable; feature patches depend
+on the model objects, never on an order of `changeFirstString` calls.
+
+### 2. Resolution strategies, in order of preference
+
+| Known at patch time | Strategy | Example from 448 |
+|---|---|---|
+| Stable owner + shape | `classDefByOrNull` + signature scan | `MediaExtKt` + return `User` + `(UserSession, Media)` → `A0t` |
+| Derivable owner + shape | walk from a stable anchor | `IgReactDialogModule.showDialogHelper` → builder `LX/0Akg` → `(OnClickListener, CharSequence[])` → `A0a` |
+| Call-site relationship | data-flow (`resolveConstantOnCurrentPath`, instruction tracing) | `Media.A8h` has 135 `List` no-arg candidates; the edit-media call site picks it |
+| Pando key | map literal → field read | `"video_versions"` → `AAM`; `"image_versions2"` → `A2w` |
+| Anchor string only | fingerprint `stringMatches` | mapper class discovery |
+| Opcode/literal shapes | last resort, verified across every target | never alone |
+
+Obfuscated names are reconnaissance only. A preserved package does not make a short name
+stable: `MediaExtKt` is stable, `A0t` is not.
+
+### 3. Typed emission instead of sentinel rewriting
+
+New code emits through `crimera:morphe-bytecode`:
+
+- `insertHook(index) { ... }` with `Block` emitters and `Target.Local` / `Target.Original`.
+- State `relocateBranchTargets` whenever the insertion point carries labels.
+- Zero raw smali templates and zero `findFreeRegister` in new IG code.
+
+The extension source must contain no fake obfuscated names. Entity patches rewrite the call
+site with the exact resolved descriptor; when a member cannot be emitted directly, cache the
+resolved signature and pass it explicitly. This is what removes the entire "sentinel leaked to
+device" class of bug. A placeholder-completeness gate (collision-proof markers scanned after
+patch execution) belongs in the library as the backstop for whatever migration remains.
+
+### 4. Runtime boundary
+
+Keep only verified stable models as `compileOnly` stubs. When a stable owner exposes an
+unstable method, inject a direct invoke from the patch instead of reflecting at runtime.
+`Entity.getMethod` is a migration target: either resolve exact parameter types at patch time
+and inject them, or move call sites to typed bridges emitted by
+`piko-patches-library`'s `common.semantic` helpers.
+
+### 5. Fail closed, always
+
+- `requireExactlyOne(label, candidates)` / `requireAtMostOne(label, candidates)` for every
+  resolution; failure messages list every candidate.
+- `scopedMatchAll` for owner-scoped fingerprint matching; never a global first match.
+- Explicit shape variants when the contract changed, with the cardinality asserted across
+  all shapes.
+- `distinct()` any reference list before an at-most-one check: `ImageInfo.Bc4()` is
+  referenced twice in `Media` on 448, and a raw candidate list reports a false ambiguity.
+- `// resolver-lint: allow instruction-order raw-first because …` only where bytecode order
+  is the contract, placed on the line above the finding.
+
+## Version-bump workflow
+
+1. Freeze the target: package, version, APK, MPP, output. Reuse stored decomps.
+2. `./gradlew :patches:build --no-daemon` (extension build + animalsniffer floor).
+3. `./gradlew :patches:lintResolvers --no-daemon`.
+4. `./gradlew :patches:checkExtensionDescriptors --no-daemon`.
+5. `./patch-ig.sh <apk>`; confirm `Applied:` and `Saved to:`.
+6. On failure, read the first `PatchException` candidate list. The fix belongs in the
+   resolver, never in an `if (version == …)` branch and never in extension source.
+7. Cross-check the candidate resolvers against the older supported APK
+   (`dexscope dry-run` / `check-stability`) before adding a compatibility entry.
+8. Deep validation (final DEX reachability, old/new runtime matrix) only after a reported
+   failure or an explicit request.
+
+Compatibility stays in one place: `COMPATIBILITY_INSTAGRAM`. Capabilities are resolved from
+the APK at patch time — class presence plus shape — not from the version string.
+
+## What is already in place
+
+- `piko-patches-library` provides `requireExactlyOne` / `requireAtMostOne`,
+  `scopedMatchAll`, instruction data-flow, semantic emitters, the resolver linter and the
+  extension-descriptor gate.
+- `piko-ig-lite` wires the animalsniffer API floor, `lintResolvers` and
+  `checkExtensionDescriptors` as verification tasks.
+- The feed download patch and its decoder closure are fail-closed: binder/selector lookups
+  assert exactly one match, the image-variant accessor asserts at most one after `distinct()`,
+  and order-contractual anchor scans carry directives explaining the contract.
+
+## What is next
+
+1. Port the entity layer to `InstagramModels` with typed `Resolved*` models; delete the
+   `Decoder.kt` globals.
+2. Add the placeholder-completeness gate to `piko-patches-library` and run it for every
+   bundle build.
+3. Migrate `Entity.getMethod` call sites to patch-time direct invokes or semantic bridges.
+4. Split the resolver-linter fixture corpus per app: generic rules in the library, IG
+   fixtures (like `ImageInfo.Bc4` duplicates and the `A8h` 135-candidate case) in this repo.
+5. Keep 439 + 448 APKs in the validation matrix and gate `dry-run` cardinality per resolver.

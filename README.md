@@ -12,6 +12,11 @@ Dalvik emission layer from [morphe-bytecode](https://github.com/crimera/morphe-b
 Scaffold: build system, extension modules and lint gates are wired. The initial patch
 set (media downloads + hide ads) is being ported from piko.
 
+## Architecture
+
+The resolution and version-bump strategy is documented in
+[docs/ig-patch-architecture.md](docs/ig-patch-architecture.md).
+
 ## Layout
 
 ```
