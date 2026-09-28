@@ -1,0 +1,38 @@
+Piko IG Lite
+Copyright (C) 2026 crimera
+https://github.com/crimera/piko-ig-lite
+
+=============
+
+This patch bundle is a lean, Instagram-only fork of piko. It builds on:
+
+    Piko Patches Library
+    https://github.com/crimera/piko-patches-library
+    Copyright (C) 2026 crimera
+    Licensed under GPL-3.0-or-later.
+
+    Morphe Patches Library
+    https://github.com/MorpheApp/morphe-patches-library
+    Copyright (C) MorpheApp
+    Licensed under GPL-3.0 with additional terms.
+
+    morphe-bytecode
+    https://github.com/crimera/morphe-bytecode
+    Copyright (C) 2026 crimera
+    Licensed under GPL-3.0-or-later.
+
+    morphe-patcher and the Morphe patch plugin
+    https://github.com/MorpheApp
+    Copyright (C) MorpheApp
+    Licensed under GPL-3.0.
+
+=============
+
+7b. Attribution Requirement
+---------------------------
+
+This NOTICE file must be preserved and retained in all distributions
+of the Source Code and any Derivative Works.
+
+This project is licensed under the GNU General Public License v3.0 or later;
+the full text is in LICENSE.
