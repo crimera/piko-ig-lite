@@ -21,11 +21,12 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-import app.morphe.extension.instagram.ui.BottomSheetView;
-import app.morphe.extension.instagram.ui.ButtonView;
-import app.morphe.extension.instagram.ui.IconView;
-import app.morphe.extension.instagram.ui.ListItem;
-import app.morphe.extension.instagram.ui.SheetTheme;
+import app.morphe.extension.crimera.theme.PikoTheme;
+import app.morphe.extension.crimera.ui.BottomSheetView;
+import app.morphe.extension.crimera.ui.ButtonView;
+import app.morphe.extension.crimera.ui.IconView;
+import app.morphe.extension.crimera.ui.ListItem;
+import app.morphe.extension.instagram.utils.InstagramSheetTheme;
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.Utils;
 
@@ -58,6 +59,7 @@ final class DownloadSheet {
         }
 
         final int total = downloads.size();
+        InstagramSheetTheme.install();
         final BottomSheetView sheet = new BottomSheetView(activity);
         final String defaultTitle = str("piko_download_sheet_title");
         final String defaultSubtitle = username != null && !username.trim().isEmpty()
@@ -184,8 +186,8 @@ final class DownloadSheet {
                 row.setLeadingImage(
                         bitmap,
                         selecting[0] && selected.contains(index)
-                                ? SheetTheme.primaryContainer(activity)
-                                : SheetTheme.surfaceVariant(activity));
+                                ? PikoTheme.primaryContainer(activity)
+                                : PikoTheme.surfaceVariant(activity));
             });
         }
     }
@@ -204,21 +206,21 @@ final class DownloadSheet {
     ) {
         boolean isSelected = selected.contains(index);
         int badgeBg = selecting && isSelected
-                ? SheetTheme.primaryContainer(activity)
-                : SheetTheme.surfaceVariant(activity);
+                ? PikoTheme.primaryContainer(activity)
+                : PikoTheme.surfaceVariant(activity);
         if (thumbnail != null && !thumbnail.isRecycled()) {
             row.setLeadingImage(thumbnail, badgeBg);
         } else {
             row.setLeadingIcon(
                     item.video ? IconView.IconType.VIDEO : IconView.IconType.IMAGE,
-                    SheetTheme.primaryAccent(activity),
+                    PikoTheme.primaryAccent(activity),
                     badgeBg);
         }
 
         if (selecting) {
             row.createTrailingIconButton(
                     isSelected ? IconView.IconType.CHECKBOX_CHECKED : IconView.IconType.CHECKBOX_UNCHECKED,
-                    isSelected ? SheetTheme.checkboxChecked(activity) : SheetTheme.secondaryText(activity),
+                    isSelected ? PikoTheme.checkboxChecked(activity) : PikoTheme.secondaryText(activity),
                     v -> {
                         toggle(selected, index);
                         refresh.run();
@@ -226,7 +228,7 @@ final class DownloadSheet {
         } else {
             row.createTrailingIconButton(
                     IconView.IconType.COPY_LINK,
-                    SheetTheme.secondaryText(activity),
+                    PikoTheme.secondaryText(activity),
                     v -> {
                         sheet.dismiss();
                         Utils.setClipboard(item.url);

@@ -150,6 +150,18 @@ the APK at patch time — class presence plus shape — not from the version str
   save-icon instructions, not from obfuscated names. The live carousel index is read through
   `DownloadUtils.currentMediaIndex`, whose body the patch emits from the resolved row-state fields.
 
+### Sheet UI ownership
+
+The bottom sheet is shared UI, not Instagram code: `BottomSheetView`, `ListItem`, `IconView` and
+`ButtonView` now ship in `piko-patches-library` as `app.morphe.extension.crimera.ui` and draw only
+through the `SettingsTheme` installed with `PikoTheme.install`. This repo supplies
+`InstagramSheetTheme` (in `extensions/instagram/.../utils`), which resolves the same `igds_*`
+attributes the retired local `SheetTheme` did, against the activity context, so the sheet keeps
+Instagram's light/dark/Prism palette and its monochrome accent. `DownloadSheet` installs the theme
+before it builds the sheet; the components carry the motion, gesture and window-inset behaviour
+unchanged. `extensions/proguard-rules.pro` keeps only the extension packages this bundle calls, so
+R8 does not ship the library's settings screens as dead weight.
+
 ## What is next
 
 1. Port the entity layer to `InstagramModels` with typed `Resolved*` models; delete the

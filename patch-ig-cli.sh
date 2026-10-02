@@ -144,4 +144,4 @@ if grep -Eq 'Fast Deploy .*ignoring|fastdeploy is disabled' <<<"$FASTDEPLOY_PROB
 fi
 
 echo "Installing APK with fast deploy: $OUTPUT_APK"
-"$ADB_BIN" install --fastdeploy -r "$OUTPUT_APK"
+"$ADB_BIN" install --user 0 --fastdeploy -r "$OUTPUT_APK"

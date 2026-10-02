@@ -4,60 +4,90 @@
  * See the included NOTICE file for GPLv3 §7(b) terms that apply to this code.
  */
 
-package app.morphe.extension.instagram.ui;
+package app.morphe.extension.instagram.utils;
 
 import android.content.Context;
 import android.graphics.Color;
 import android.util.TypedValue;
 
+import app.morphe.extension.crimera.theme.PikoTheme;
+import app.morphe.extension.crimera.theme.SettingsColor;
+import app.morphe.extension.crimera.theme.SettingsTheme;
 import app.morphe.extension.shared.ResourceUtils;
 
 /**
- * Color tokens and metrics for the bottom sheet components. Every color is resolved from the
- * host's `igds_*` theme attributes against the activity context, so the sheet follows whatever
- * theme (light, dark, Material You) the app is currently showing.
+ * Instagram's palette for the shared bottom-sheet widgets. Every color is resolved from the host's
+ * {@code igds_*} theme attributes against the context the widget asks about — the activity — so the
+ * sheet follows whatever theme (light, dark, Prism) Instagram is currently showing.
+ *
+ * <p>This is the exact behaviour of the retired Instagram-local {@code ui/SheetTheme}: same
+ * attributes, same fallbacks, same blends. In particular the accent stays monochrome
+ * ({@code igds_color_primary_icon}, never the {@code primary_button} blue), the tonal surfaces are
+ * neutral tints of the text color, and the drag handle keeps Instagram's own creation-tools grey
+ * instead of the library's neutral text tint, so the sheet renders on device as it always has.
  */
-public final class SheetTheme {
+public final class InstagramSheetTheme implements SettingsTheme {
     private static final int LIGHT_SURFACE = Color.WHITE;
     private static final int LIGHT_TEXT = Color.rgb(0, 0, 0);
     private static final int DARK_TEXT = Color.rgb(245, 245, 245);
     private static final int LIGHT_SECONDARY_TEXT = Color.rgb(115, 115, 115);
     private static final int DARK_SECONDARY_TEXT = Color.rgb(168, 168, 168);
 
-    private SheetTheme() {
+    private static final InstagramSheetTheme INSTANCE = new InstagramSheetTheme();
+
+    private InstagramSheetTheme() {
     }
 
-    public static int dpToPx(Context context, float dp) {
-        if (context == null) return Math.round(dp);
-        return Math.round(TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP,
-                dp,
-                context.getResources().getDisplayMetrics()
-        ));
+    /** Installs Instagram's palette for the shared widgets. Cheap and idempotent. */
+    public static void install() {
+        PikoTheme.install(INSTANCE);
     }
 
-    public static boolean isDark(Context context) {
-        int background = attrColor(context, "igds_color_primary_background", Color.WHITE);
+    @Override
+    public boolean isDark(Context context) {
+        int background = attrColor(context, "igds_color_primary_background", LIGHT_SURFACE);
         return Color.luminance(background) < 0.5f;
     }
 
+    @Override
+    public int color(Context context, SettingsColor role) {
+        return switch (role) {
+            case SURFACE, SURFACE_CONTAINER -> surface(context);
+            case SURFACE_CONTAINER_HIGH, SURFACE_VARIANT -> surfaceVariant(context);
+            case ON_SURFACE -> primaryText(context);
+            case ON_SURFACE_VARIANT -> secondaryText(context);
+            case ACCENT -> primaryAccent(context);
+            case ON_ACCENT -> onPrimaryAccent(context);
+            case ACCENT_CONTAINER -> primaryContainer(context);
+            case ON_ACCENT_CONTAINER -> onPrimaryContainer(context);
+            case OUTLINE -> dividerColor(context);
+            case CHECKBOX_CHECKED -> primaryAccent(context);
+        };
+    }
+
+    @Override
+    public int dragHandleColor(Context context) {
+        return attrColor(context, "igds_color_creation_tools_grey_02",
+                isDark(context) ? Color.rgb(85, 85, 85) : Color.rgb(219, 219, 219));
+    }
+
     /** Sheet background: the same color as the feed behind it. */
-    public static int surface(Context context) {
+    private int surface(Context context) {
         return attrColor(context, "igds_color_primary_background",
                 isDark(context) ? Color.BLACK : LIGHT_SURFACE);
     }
 
     /** Leading badge background: Instagram's own secondary surface. */
-    public static int surfaceVariant(Context context) {
+    private int surfaceVariant(Context context) {
         return attrColor(context, "igds_color_secondary_background",
                 isDark(context) ? Color.rgb(26, 26, 26) : Color.rgb(239, 239, 239));
     }
 
-    public static int primaryText(Context context) {
+    private int primaryText(Context context) {
         return attrColor(context, "igds_color_primary_text", isDark(context) ? DARK_TEXT : LIGHT_TEXT);
     }
 
-    public static int secondaryText(Context context) {
+    private int secondaryText(Context context) {
         return attrColor(context, "igds_color_secondary_text",
                 isDark(context) ? DARK_SECONDARY_TEXT : LIGHT_SECONDARY_TEXT);
     }
@@ -66,39 +96,26 @@ public final class SheetTheme {
      * Instagram's Prism surfaces are monochrome: controls are tinted with the text color, never
      * `primary_button` blue. This is the filled button background and the icon tint.
      */
-    public static int primaryAccent(Context context) {
+    private int primaryAccent(Context context) {
         return attrColor(context, "igds_color_primary_icon", primaryText(context));
     }
 
     /** Filled button label: the sheet color, inverted against the button. */
-    public static int onPrimaryAccent(Context context) {
+    private int onPrimaryAccent(Context context) {
         return surface(context);
     }
 
     /** Tonal button and selected badge background: a neutral tint of the text color. */
-    public static int primaryContainer(Context context) {
-        return blend(surface(context), primaryText(context), isDark(context) ? 0.16f : 0.10f);
+    private int primaryContainer(Context context) {
+        return PikoTheme.blend(surface(context), primaryText(context), isDark(context) ? 0.16f : 0.10f);
     }
 
-    public static int onPrimaryContainer(Context context) {
+    private int onPrimaryContainer(Context context) {
         return primaryText(context);
     }
 
-    public static int checkboxChecked(Context context) {
-        return primaryAccent(context);
-    }
-
-    public static int dividerColor(Context context) {
+    private int dividerColor(Context context) {
         return attrColor(context, "igds_color_divider", withAlpha(primaryText(context), 31));
-    }
-
-    public static int rippleColor(Context context) {
-        return withAlpha(primaryText(context), isDark(context) ? 40 : 32);
-    }
-
-    public static int dragHandleColor(Context context) {
-        return attrColor(context, "igds_color_creation_tools_grey_02",
-                isDark(context) ? Color.rgb(85, 85, 85) : Color.rgb(219, 219, 219));
     }
 
     /** Resolves a theme attribute that points at a color, or holds one directly. */
@@ -120,16 +137,6 @@ public final class SheetTheme {
     }
 
     private static int withAlpha(int color, int alpha) {
-        return Color.argb(alpha, Color.red(color), Color.green(color), Color.blue(color));
-    }
-
-    public static int blend(int base, int overlay, float ratio) {
-        float inverse = 1f - ratio;
-        return Color.argb(
-                (int) (Color.alpha(base) * inverse + Color.alpha(overlay) * ratio),
-                (int) (Color.red(base) * inverse + Color.red(overlay) * ratio),
-                (int) (Color.green(base) * inverse + Color.green(overlay) * ratio),
-                (int) (Color.blue(base) * inverse + Color.blue(overlay) * ratio)
-        );
+        return (color & 0x00FFFFFF) | (alpha << 24);
     }
 }
