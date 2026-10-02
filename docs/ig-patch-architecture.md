@@ -120,6 +120,11 @@ the APK at patch time — class presence plus shape — not from the version str
 - The feed download patch and its decoder closure are fail-closed: binder/selector lookups
   assert exactly one match, the image-variant accessor asserts at most one after `distinct()`,
   and order-contractual anchor scans carry directives explaining the contract.
+- The feed download button covers both UFI renderers. The view row binder hook serves the main
+  feed; Litho surfaces (e.g. the contextual profile feed) get a second icon component built
+  into the UFI builder. The node, component, wrapper and factory shapes are derived from the
+  save-icon instructions, not from obfuscated names. The live carousel index is read through
+  `DownloadUtils.currentMediaIndex`, whose body the patch emits from the resolved row-state fields.
 
 ## What is next
 

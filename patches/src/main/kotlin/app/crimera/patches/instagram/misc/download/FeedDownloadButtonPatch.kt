@@ -10,6 +10,8 @@ import app.crimera.bytecode.Target
 import app.crimera.bytecode.insertHook
 import app.crimera.bytecode.methodReference
 import app.crimera.patches.common.requireExactlyOne
+import app.crimera.patches.instagram.entity.decoder.CURRENT_MEDIA_FIELD
+import app.crimera.patches.instagram.entity.decoder.MEDIA_ADD_INFO_CLASS_NAME
 import app.crimera.patches.instagram.entity.decoder.decoderEntity
 import app.crimera.patches.instagram.entity.dialogbox.instagramDialogBoxEntity
 import app.crimera.patches.instagram.entity.mediadata.mediaDataEntity
@@ -22,73 +24,66 @@ import app.crimera.patches.instagram.utils.Constants.COMPATIBILITY_INSTAGRAM
 import app.crimera.patches.instagram.utils.Constants.DOWNLOAD_DESCRIPTOR
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.literal
+import app.morphe.patcher.patch.BytecodePatchContext
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
+import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
+import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
 import app.morphe.patches.all.misc.resources.ResourceType
 import app.morphe.patches.all.misc.resources.addAppResources
 import app.morphe.patches.all.misc.resources.addResourcesPatch
 import app.morphe.patches.all.misc.resources.getResourceId
 import app.morphe.patches.all.misc.resources.resourceMappingPatch
 import app.morphe.util.getReference
+import app.morphe.util.matchSingle
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
-import com.android.tools.smali.dexlib2.iface.ClassDef
+import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
 import com.android.tools.smali.dexlib2.iface.Method
+import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.Instruction
+import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.RegisterRangeInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
+import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.StringReference
+import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
+
+internal const val OBJECT_DESCRIPTOR = "Ljava/lang/Object;"
+internal const val INTEGER_DESCRIPTOR = "Ljava/lang/Integer;"
+internal const val USER_SESSION_DESCRIPTOR = "Lcom/instagram/common/session/UserSession;"
+internal const val DOWNLOAD_UTILS_DESCRIPTOR = "$DOWNLOAD_DESCRIPTOR/DownloadUtils;"
 
 private const val VIEW_DESCRIPTOR = "Landroid/view/View;"
 private const val MEDIA_DESCRIPTOR = "Lcom/instagram/feed/media/Media;"
-private const val USER_SESSION_DESCRIPTOR = "Lcom/instagram/common/session/UserSession;"
-private const val EXTENSION_METHOD =
-    "$DOWNLOAD_DESCRIPTOR/DownloadUtils;->addFeedDownloadButton" +
-        "(Landroid/view/View;Ljava/lang/Object;Lcom/instagram/common/session/UserSession;)V"
-
 private const val STRING_DESCRIPTOR = "Ljava/lang/String;"
-private const val INTEGER_DESCRIPTOR = "Ljava/lang/Integer;"
-private const val STRING_EQUALS = "Ljava/lang/String;->equals(Ljava/lang/Object;)Z"
+private const val STRING_EQUALS = "$STRING_DESCRIPTOR->equals($OBJECT_DESCRIPTOR)Z"
+private const val ADD_FEED_DOWNLOAD_BUTTON =
+    "$DOWNLOAD_UTILS_DESCRIPTOR->addFeedDownloadButton" +
+        "($VIEW_DESCRIPTOR$OBJECT_DESCRIPTOR$USER_SESSION_DESCRIPTOR$OBJECT_DESCRIPTOR)V"
 
-/** The main feed module. The UFI variant selector is only consulted for this module. */
+/** The UFI renderer selector is only overridden for the main feed module. */
 private const val MAIN_FEED_MODULE = "feed_timeline"
 
-/** MobileConfig value that selects the classic view based UFI row. */
+/** MobileConfig values the UFI renderer selector switches on. */
+private const val LITHO_UFI_VARIANT = "litho"
 private const val VIEW_UFI_VARIANT = "view"
 
-private const val LITHO_UFI_VARIANT = "litho"
-
-/**
- * The feed post action row (like / comment / repost / share / save) is a plain view holder whose
- * constructor resolves `row_feed_button_save` with `requireViewById`. Matching that resource literal
- * finds the holder class without depending on obfuscated names. The root view is the only `View`
- * field assigned directly from the constructor's `View` parameter.
- */
-private fun Method.resolveRootViewField(): FieldReference {
-    val parameterRegister = registerOfParameter(VIEW_DESCRIPTOR)
-    val instructions = implementation?.instructions?.toList() ?: emptyList()
-    val candidates =
-        instructions
-            .mapNotNull { instruction ->
-                if (instruction.opcode != Opcode.IPUT_OBJECT) return@mapNotNull null
-                val twoRegister = instruction as TwoRegisterInstruction
-                if (twoRegister.registerA != parameterRegister) return@mapNotNull null
-                twoRegister.getReference<FieldReference>()?.takeIf { it.definingClass == definingClass }
-            }.distinctBy { it.toString() }
-
-    return requireExactlyOne("feed UFI root view field in $this", candidates)
-}
-
-private fun Method.parameterWords(): Int {
+internal fun Method.parameterWords(): Int {
     var words = if (AccessFlags.STATIC.isSet(accessFlags)) 0 else 1
     parameterTypes.forEach { words += if (it.toString() == "J" || it.toString() == "D") 2 else 1 }
     return words
 }
 
-private fun Method.parameterRegisterStart(): Int =
-    (implementation?.registerCount ?: 0) - parameterWords()
+internal fun Method.parameterRegisterStart(): Int = (implementation?.registerCount ?: 0) - parameterWords()
 
-private fun Method.registerOfParameter(descriptor: String): Int {
+/** The parameter block, `this` included, which typed hooks must never use as scratch. */
+internal fun Method.parameterBlock(): List<Int> =
+    (parameterRegisterStart() until parameterRegisterStart() + parameterWords()).toList()
+
+internal fun Method.registerOfParameter(descriptor: String): Int {
     var register = parameterRegisterStart() + if (AccessFlags.STATIC.isSet(accessFlags)) 0 else 1
     parameterTypes.forEach { type ->
         val value = type.toString()
@@ -98,39 +93,39 @@ private fun Method.registerOfParameter(descriptor: String): Int {
     throw PatchException("Method $this has no $descriptor parameter")
 }
 
-private fun Method.sameSignatureAs(other: Method): Boolean =
+internal fun MethodReference.sameSignatureAs(other: MethodReference): Boolean =
     name == other.name &&
         returnType == other.returnType &&
         parameterTypes.map { it.toString() } == other.parameterTypes.map { it.toString() }
 
-/**
- * The feed row type decides how the UFI row is rendered:
- * `MEDIA_UFI` (view), `LITHO_MEDIA_UFI` or `COMPOSE_MEDIA_UFI`. Only the view renderer creates the
- * `LX/00uM` holder this patch extends, so the main feed is pinned to `view`. The mock value is the
- * same `Integer` the selector would return for the `view` MobileConfig value, so the row type
- * contract is unchanged. Non feed modules keep the original selector result.
- */
-private fun Method.resolveViewVariantField(): FieldReference {
-    val instructions = implementation?.instructions?.toList() ?: emptyList()
-    val viewStringIndex =
-        instructions.indexOfFirst { instruction ->
-            instruction.getReference<StringReference>()?.string == VIEW_UFI_VARIANT
-        }
-    if (viewStringIndex < 0) {
-        throw PatchException("No \"$VIEW_UFI_VARIANT\" variant in UFI selector $this")
+internal fun Instruction.methodRef(): MethodReference? = (this as? ReferenceInstruction)?.reference as? MethodReference
+
+/** Register words an invoke or move instruction reads, in operand order. */
+internal fun Instruction.registers(): List<Int> =
+    when (this) {
+        is FiveRegisterInstruction ->
+            listOf(registerC, registerD, registerE, registerF, registerG).take(registerCount)
+
+        is RegisterRangeInstruction -> (startRegister until startRegister + registerCount).toList()
+        is TwoRegisterInstruction -> listOf(registerA, registerB)
+        is OneRegisterInstruction -> listOf(registerA)
+        else -> emptyList()
     }
 
-    val candidates =
-        instructions
-            .drop(viewStringIndex + 1)
-            .take(8)
-            .mapNotNull { instruction ->
-                if (instruction.opcode != Opcode.SGET_OBJECT) return@mapNotNull null
-                instruction.getReference<FieldReference>()?.takeIf { it.type == INTEGER_DESCRIPTOR }
-            }.distinctBy { it.toString() }
+/** The resolved bytecode method a fingerprint-free lookup returned, as the mutable copy to patch. */
+context(patchContext: BytecodePatchContext)
+private fun MethodReference.toMutable(label: String): MutableMethod =
+    requireExactlyOne(
+        label,
+        patchContext.mutableClassDefBy(definingClass).methods.filter { it.sameSignatureAs(this) },
+    )
 
-    return requireExactlyOne("view UFI variant field in $this", candidates)
-}
+/** Where the binder reads the `UserSession` from: a field of the binder itself or of one parameter. */
+private class UserSessionSource(
+    val type: String,
+    val register: Int,
+    val field: FieldReference,
+)
 
 @Suppress("unused")
 val feedDownloadButtonPatch =
@@ -163,141 +158,257 @@ val feedDownloadButtonPatch =
             addAppResources("instagram")
 
             val saveButtonId = getResourceId(ResourceType.ID, "row_feed_button_save")
-
-            val holderMatches =
-                Fingerprint(
-                    name = "<init>",
-                    returnType = "V",
-                    parameters = listOf(VIEW_DESCRIPTOR),
-                    filters = listOf(literal(saveButtonId)),
-                ).matchAll()
-
-            if (holderMatches.size != 1) {
-                throw PatchException(
-                    "Expected one feed UFI row holder, found ${holderMatches.size}: " +
-                        holderMatches.joinToString { it.originalMethod.toString() },
-                )
-            }
-
-            val holderMatch = holderMatches.single()
-            val holderClass = holderMatch.classDef
-            val holderDescriptor = holderClass.type
-            val rootViewField = holderMatch.method.resolveRootViewField()
-
-            // The feed item state is the holder field type that exposes exactly one Media.
-            val stateType =
-                requireExactlyOne(
-                    "feed UFI media state type for $holderDescriptor",
-                    holderClass.fields
-                        .map { it.type }
-                        .filter { type ->
-                            classDefByOrNull(type)?.fields?.count { it.type == MEDIA_DESCRIPTOR } == 1
-                        }.distinct(),
-                )
-
-            val stateClass: ClassDef = classDefBy(stateType)
-            val mediaField = requireExactlyOne("Media field on $stateType", stateClass.fields.filter { it.type == MEDIA_DESCRIPTOR })
-
-            // The binder method receives both the holder and the media state.
-            val bindCandidates = mutableListOf<Method>()
-            classDefForEach { classDef ->
-                classDef.methods.forEach { method ->
-                    if (method.returnType != "V") return@forEach
-                    val parameters = method.parameterTypes.map { it.toString() }
-                    if (holderDescriptor in parameters && stateType in parameters) {
-                        bindCandidates.add(method)
-                    }
-                }
-            }
-
-            val bindMethod = requireExactlyOne("feed UFI bind method", bindCandidates)
-
-            val binderClass: ClassDef = classDefBy(bindMethod.definingClass)
-            val userSessionField =
-                requireExactlyOne(
-                    "UserSession field on ${binderClass.type}",
-                    binderClass.fields.filter { it.type == USER_SESSION_DESCRIPTOR },
-                )
-
-            val holderParameterRegister = bindMethod.registerOfParameter(holderDescriptor)
-            val stateParameterRegister = bindMethod.registerOfParameter(stateType)
-            val thisRegister = bindMethod.parameterRegisterStart()
-
-            val mutableBind =
-                requireExactlyOne(
-                    "feed UFI bind method to patch",
-                    mutableClassDefBy(bindMethod.definingClass).methods.filter { it.sameSignatureAs(bindMethod) },
-                )
-
-            mutableBind.insertHook(
-                index = 0,
-                excludedRegisters = (thisRegister until thisRegister + bindMethod.parameterWords()).toList(),
-                relocateBranchTargets = false,
-            ) {
-                val holder = scratchRegister()
-                move(holder, holderParameterRegister, holderDescriptor)
-                val rootView = scratchRegister()
-                iget(rootView, holder, rootViewField)
-
-                val state = scratchRegister()
-                move(state, stateParameterRegister, stateType)
-                val media = scratchRegister()
-                iget(media, state, mediaField)
-
-                val binder = scratchRegister()
-                move(binder, thisRegister, binderClass.type)
-                val userSession = scratchRegister()
-                iget(userSession, binder, userSessionField)
-
-                invokeStatic(methodReference(EXTENSION_METHOD), rootView, media, userSession)
-            }
-
-            // The same feed post can render its UFI row as a view, a Litho component or a Compose
-            // component, selected by a MobileConfig value. Only the view renderer creates the
-            // `LX/00uM` holder extended above, so pin the main feed to it. Modules other than the
-            // main feed keep the original selector result.
-            val variantSelectorMatches =
-                Fingerprint(
-                    returnType = INTEGER_DESCRIPTOR,
-                    strings = listOf(MAIN_FEED_MODULE, LITHO_UFI_VARIANT, VIEW_UFI_VARIANT),
-                ).matchAll()
-
-            if (variantSelectorMatches.size != 1) {
-                throw PatchException(
-                    "Expected one feed UFI variant selector, found ${variantSelectorMatches.size}: " +
-                        variantSelectorMatches.joinToString { it.originalMethod.toString() },
-                )
-            }
-
-            val selectorMethod = variantSelectorMatches.single().method
-            val viewVariantField = selectorMethod.resolveViewVariantField()
-            val moduleRegister = selectorMethod.registerOfParameter(STRING_DESCRIPTOR)
-            val selectorThisRegister = selectorMethod.parameterRegisterStart()
-
-            val mutableSelector =
-                requireExactlyOne(
-                    "feed UFI variant selector to patch",
-                    mutableClassDefBy(selectorMethod.definingClass)
-                        .methods
-                        .filter { it.sameSignatureAs(selectorMethod) },
-                )
-
-            mutableSelector.insertHook(
-                index = 0,
-                excludedRegisters =
-                    (selectorThisRegister until selectorThisRegister + selectorMethod.parameterWords()).toList(),
-                relocateBranchTargets = false,
-            ) {
-                val expectedModule = scratchRegister()
-                constString(expectedModule, MAIN_FEED_MODULE)
-                val isMainFeed = scratchRegister()
-                invokeVirtual(methodReference(STRING_EQUALS), moduleRegister, expectedModule)
-                moveResult(isMainFeed, "Z")
-                ifEqz(isMainFeed, Target.Original)
-
-                val variant = scratchRegister()
-                sget(variant, viewVariantField)
-                returnObject(variant)
-            }
+            val rowState = hookFeedRowBinder(saveButtonId)
+            injectCurrentMediaIndex(rowState)
+            pinMainFeedToViewUfi()
+            injectLithoDownloadButton(
+                saveButtonId,
+                getResourceId(ResourceType.DRAWABLE, "instagram_download_outline_24"),
+                rowState.type,
+            )
         }
     }
+
+/** The feed row state both UFI renderers receive, and the fields the download reads from it. */
+private class FeedRowState(
+    val type: String,
+    val viewStateField: FieldReference,
+)
+
+/**
+ * The feed post action row (like / comment / repost / share / save) is a plain view holder whose
+ * constructor resolves `row_feed_button_save` with `requireViewById`. Matching that resource literal
+ * finds the holder class without depending on obfuscated names; its binder is hooked to hand the
+ * extension the row root, `Media`, `UserSession` and row state.
+ */
+context(patchContext: BytecodePatchContext)
+private fun hookFeedRowBinder(saveButtonId: Long): FeedRowState {
+    val holderMatch =
+        Fingerprint(
+            name = "<init>",
+            returnType = "V",
+            parameters = listOf(VIEW_DESCRIPTOR),
+            filters = listOf(literal(saveButtonId)),
+        ).matchSingle()
+    val holderClass = holderMatch.classDef
+    val holderType = holderClass.type
+
+    // The root view is the only field assigned directly from the constructor's `View` parameter.
+    val viewRegister = holderMatch.method.registerOfParameter(VIEW_DESCRIPTOR)
+    val rootViewField =
+        requireExactlyOne(
+            "feed UFI root view field in ${holderMatch.method}",
+            holderMatch.method.implementation
+                ?.instructions
+                .orEmpty()
+                .mapNotNull { instruction ->
+                    if (instruction.opcode != Opcode.IPUT_OBJECT) return@mapNotNull null
+                    if ((instruction as TwoRegisterInstruction).registerA != viewRegister) return@mapNotNull null
+                    instruction.getReference<FieldReference>()?.takeIf { it.definingClass == holderType }
+                }.distinctBy { it.toString() },
+        )
+
+    // The feed item state is the holder field type that exposes exactly one Media.
+    val stateType =
+        requireExactlyOne(
+            "feed UFI media state type for $holderType",
+            holderClass.fields
+                .map { it.type }
+                .filter { type ->
+                    patchContext.classDefByOrNull(type)?.fields?.count { it.type == MEDIA_DESCRIPTOR } == 1
+                }.distinct(),
+        )
+    val stateClass = patchContext.classDefBy(stateType)
+    val mediaField =
+        requireExactlyOne("Media field on $stateType", stateClass.fields.filter { it.type == MEDIA_DESCRIPTOR })
+
+    // The state reaches the view state the carousel mutates; its current-media field is the one the
+    // overflow-menu handler passes as the current index.
+    val viewStateField =
+        requireExactlyOne(
+            "view state field on $stateType",
+            stateClass.fields.filter { it.type == MEDIA_ADD_INFO_CLASS_NAME },
+        )
+
+    // The binder method receives both the holder and the media state.
+    val bindCandidates = mutableListOf<Method>()
+    patchContext.classDefForEach { classDef ->
+        classDef.methods.forEach { method ->
+            if (method.returnType != "V") return@forEach
+            val parameters = method.parameterTypes.map { it.toString() }
+            if (holderType in parameters && stateType in parameters) bindCandidates.add(method)
+        }
+    }
+    val bindMethod = requireExactlyOne("feed UFI bind method", bindCandidates)
+    val binderClass = patchContext.classDefBy(bindMethod.definingClass)
+
+    // 448 keeps the session in a binder field; 439 passes it through a parameter whose type exposes
+    // exactly one `UserSession`. Prefer the binder's own field.
+    val binderSessionFields = binderClass.fields.filter { it.type == USER_SESSION_DESCRIPTOR }
+    val sessionSource =
+        if (binderSessionFields.isEmpty()) {
+            requireExactlyOne(
+                "UserSession source of $bindMethod",
+                bindMethod.parameterTypes.mapNotNull { parameter ->
+                    val type = parameter.toString()
+                    val field =
+                        patchContext
+                            .classDefByOrNull(type)
+                            ?.fields
+                            ?.filter { it.type == USER_SESSION_DESCRIPTOR }
+                            ?.singleOrNull()
+                    field?.let { UserSessionSource(type, bindMethod.registerOfParameter(type), it) }
+                },
+            )
+        } else {
+            UserSessionSource(
+                binderClass.type,
+                bindMethod.parameterRegisterStart(),
+                requireExactlyOne("UserSession field on ${binderClass.type}", binderSessionFields),
+            )
+        }
+
+    val holderRegister = bindMethod.registerOfParameter(holderType)
+    val stateRegister = bindMethod.registerOfParameter(stateType)
+
+    bindMethod.toMutable("feed UFI bind method to patch").insertHook(
+        index = 0,
+        excludedRegisters = bindMethod.parameterBlock(),
+        relocateBranchTargets = false,
+    ) {
+        // 4-bit `iget` cannot address the argument registers of a method with many locals, so
+        // every operand is moved into a low scratch register first.
+        val rootView = scratchRegister()
+        move(rootView, holderRegister, holderType)
+        iget(rootView, rootView, rootViewField)
+
+        val state = scratchRegister()
+        move(state, stateRegister, stateType)
+        val media = scratchRegister()
+        iget(media, state, mediaField)
+
+        val userSession = scratchRegister()
+        move(userSession, sessionSource.register, sessionSource.type)
+        iget(userSession, userSession, sessionSource.field)
+
+        invokeStatic(methodReference(ADD_FEED_DOWNLOAD_BUTTON), rootView, media, userSession, state)
+    }
+
+    return FeedRowState(stateType, viewStateField)
+}
+
+/**
+ * Rebuilds `DownloadUtils.currentMediaIndex` from direct reads of the resolved row state fields, so
+ * the download follows a carousel swipe. The compiled stub keeps no local register (its unused
+ * argument is reused for the constant), so the body is emitted into a fresh two-register frame:
+ * `v0` is the scratch value and `v1` the row state. Any other state falls back to index 0.
+ */
+context(patchContext: BytecodePatchContext)
+private fun injectCurrentMediaIndex(rowState: FeedRowState) {
+    val currentMediaField = CURRENT_MEDIA_FIELD
+    if (currentMediaField.definingClass != rowState.viewStateField.type || currentMediaField.type != "I") {
+        throw PatchException("Current media field $currentMediaField is not an int on ${rowState.viewStateField.type}")
+    }
+
+    val utilsClass = patchContext.mutableClassDefBy(DOWNLOAD_UTILS_DESCRIPTOR)
+    val stub =
+        requireExactlyOne(
+            "DownloadUtils.currentMediaIndex",
+            utilsClass.methods.filter { method ->
+                method.name == "currentMediaIndex" &&
+                    method.returnType == "I" &&
+                    method.parameterTypes.map { it.toString() } == listOf(OBJECT_DESCRIPTOR) &&
+                    AccessFlags.STATIC.isSet(method.accessFlags)
+            },
+        )
+    val accessor =
+        ImmutableMethod(
+            stub.definingClass,
+            stub.name,
+            stub.parameters,
+            stub.returnType,
+            stub.accessFlags,
+            null,
+            null,
+            MutableMethodImplementation(2),
+        ).toMutable()
+    utilsClass.methods.remove(stub)
+    utilsClass.methods.add(accessor)
+
+    val value = 0
+    val state = 1
+    accessor.insertHook(index = 0, relocateBranchTargets = false) {
+        instanceOf(value, state, rowState.type)
+        ifEqz(value, Target.Local("fallback"))
+        checkCast(state, rowState.type)
+        iget(value, state, rowState.viewStateField)
+        ifEqz(value, Target.Local("fallback"))
+        iget(value, value, currentMediaField)
+        returnValue(value)
+
+        label("fallback")
+        constInt(value, 0)
+        returnValue(value)
+    }
+}
+
+/**
+ * The feed row type decides how the UFI row is rendered: `MEDIA_UFI` (view), `LITHO_MEDIA_UFI` or
+ * `COMPOSE_MEDIA_UFI`. Only the view renderer creates the holder [hookFeedRowBinder] hooks, so the
+ * main feed is pinned to `view`; other modules keep the original selector result and get the Litho
+ * button instead. 439 has a static and an instance selector, and both are pinned.
+ */
+context(patchContext: BytecodePatchContext)
+private fun pinMainFeedToViewUfi() {
+    val selectors =
+        Fingerprint(
+            returnType = INTEGER_DESCRIPTOR,
+            strings = listOf(MAIN_FEED_MODULE, LITHO_UFI_VARIANT, VIEW_UFI_VARIANT),
+        ).matchAll(1..2)
+
+    // The selector returns the static `Integer` that follows the "view" string constant.
+    val viewVariantField =
+        requireExactlyOne(
+            "view UFI variant field",
+            selectors
+                .map { selector ->
+                    val instructions = selector.method.implementation?.instructions?.toList().orEmpty()
+                    // resolver-lint: allow instruction-order raw-first because the selector's switch case is the string followed by its Integer
+                    val viewStringIndex =
+                        instructions.indexOfFirst { it.getReference<StringReference>()?.string == VIEW_UFI_VARIANT }
+                    if (viewStringIndex < 0) throw PatchException("No \"$VIEW_UFI_VARIANT\" variant in UFI selector ${selector.method}")
+                    requireExactlyOne(
+                        "view UFI variant field in ${selector.method}",
+                        instructions
+                            .drop(viewStringIndex + 1)
+                            .take(8)
+                            .mapNotNull { instruction ->
+                                if (instruction.opcode != Opcode.SGET_OBJECT) return@mapNotNull null
+                                instruction.getReference<FieldReference>()?.takeIf { it.type == INTEGER_DESCRIPTOR }
+                            }.distinctBy { it.toString() },
+                    )
+                }.distinctBy { it.toString() },
+        )
+
+    selectors.forEach { selector ->
+        val method = selector.method
+        val moduleRegister = method.registerOfParameter(STRING_DESCRIPTOR)
+
+        method.insertHook(
+            index = 0,
+            excludedRegisters = method.parameterBlock(),
+            relocateBranchTargets = false,
+        ) {
+            val expectedModule = scratchRegister()
+            constString(expectedModule, MAIN_FEED_MODULE)
+            val isMainFeed = scratchRegister()
+            move(isMainFeed, moduleRegister, STRING_DESCRIPTOR)
+            invokeVirtual(methodReference(STRING_EQUALS), expectedModule, isMainFeed)
+            moveResult(isMainFeed, "Z")
+            ifEqz(isMainFeed, Target.Original)
+
+            sget(expectedModule, viewVariantField)
+            returnObject(expectedModule)
+        }
+    }
+}
