@@ -4,7 +4,7 @@
  * See the included NOTICE file for GPLv3 §7(b) terms that apply to this code.
  */
 
-package app.crimera.patches.instagram.misc.download
+package app.crimera.patches.instagram.misc.downloads
 
 import app.crimera.bytecode.RegisterLimit
 import app.crimera.bytecode.Target

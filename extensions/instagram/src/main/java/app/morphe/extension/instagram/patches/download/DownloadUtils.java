@@ -10,9 +10,7 @@ package app.morphe.extension.instagram.patches.download;
 import static app.morphe.extension.instagram.utils.IgStr.str;
 
 import android.os.Build;
-import android.app.Dialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.app.Activity;
 import android.util.TypedValue;
 import android.view.View;
@@ -35,14 +33,11 @@ import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.entity.MediaData;
 import app.morphe.extension.instagram.entity.UserData;
 import app.morphe.extension.instagram.entity.VideoData;
-import app.morphe.extension.instagram.entity.InstagramDialogBox;
 import app.morphe.extension.instagram.entity.AudioMediaInterface;
-import app.morphe.extension.instagram.entity.MediaInterface;
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.ResourceType;
 import app.morphe.extension.shared.ResourceUtils;
 import app.morphe.extension.shared.Utils;
-import app.morphe.extension.instagram.settings.ActivityHook;
 import app.morphe.extension.instagram.patches.Links;
 import app.morphe.extension.crimera.ObjectBrowser;
 import app.morphe.extension.crimera.downloader.MediaDownloader;
@@ -73,141 +68,60 @@ public class DownloadUtils {
         return null;
     }
 
-    private static void buildVariantDialogBox(Context context, MediaData currentMediaData, String username, MediaType mediaType) throws Exception {
-        List<MediaInterface> variantList;
-        String title = "";
-        if(mediaType.equals(MediaType.VIDEO)){
-            title = str("piko_video_variants");
-            variantList = currentMediaData.getVideoVariants();
-        }else{
-            title = str("piko_image_variants");
-            variantList = currentMediaData.getImageVariants();
-        }
-
-        InstagramDialogBox dialog = new InstagramDialogBox(context);
-        ArrayList<String> options = new ArrayList<>();
-        variantList.forEach(item -> options.add(item.getVariantTag()));
-        CharSequence[] items = options.toArray(new CharSequence[0]);
-
-        dialog.addDialogMenuItems(items, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface d, int which) {
-                MediaInterface data = variantList.get(which);
-
-                try {
-                    String filename = username + "_"+currentMediaData.getVariantFileName(data);
-                    String mediaUrl = data.getUrl();
-                    String subFolder = getSubfolderName(username);
-                    downloadMediaUrl(context,mediaUrl,subFolder,filename);
-                } catch (Exception e) {
-                    PikoUtils.logger(e);
-                    Logger.printException(() -> "Error at buildVariantDialogBox", e);
-                    Utils.showToastShort(e.getMessage());
-                }
-
-            }
-        });
-
-        dialog.setTitle(title);
-        dialog.setCancelable(true);
-        dialog.setCanceledOnTouchOutside(true);
-
-        Dialog dlg = dialog.getDialog();
-        dlg.show();
-
-    }
-
-    private static void downloadDialogBox(Context context, MediaData mediaInfo, int position) throws Exception {
-        int carouselSize = mediaInfo.getCarouselSize();
-        MediaData currentMediaData = mediaInfo.getMediaAt(position);
-        String username = feedDownloadUsername(mediaInfo);
-        Boolean isCurrentMediaVideo = currentMediaData.isVideo();
-        Boolean currentMediaHasAudio = currentMediaData.hasAudio();
-
-        InstagramDialogBox dialog = new InstagramDialogBox(context);
-
-        ArrayList<String> options = new ArrayList<>();
-        options.add(str("piko_download_current_media"));
-        options.add(str("piko_download_as_image"));
-        if (currentMediaHasAudio) options.add(str("piko_download_audio"));
-        options.add(str("piko_copy_media_link"));
-        options.add(str("piko_image_variants"));
-        if (isCurrentMediaVideo) {
-            options.add(str("piko_video_variants"));
-            options.add(str("piko_open_video_externally"));
-        } else {
-            options.add(str("piko_open_image_externally"));
-        }
-
-        if (carouselSize > 1) options.add(str("piko_download_all"));
-
-        CharSequence[] items = options.toArray(new CharSequence[0]);
-
-        dialog.addDialogMenuItems(items, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface d, int which) {
-                try {
-                    // Doing like this because options are dynamic.
-                    String selectedOption = options.get(which);
-
-                    if (selectedOption.equals(str("piko_download_current_media"))) {
-                        downloadMedia(context, mediaInfo, position, MediaType.ANY);
-
-                    } else if (selectedOption.equals(str("piko_download_as_image"))) {
-                        downloadMedia(context, mediaInfo, position, MediaType.IMAGE);
-
-                    } else if (selectedOption.equals(str("piko_copy_media_link"))) {
-                        Utils.setClipboard(currentMediaData.getMediaLink());
-                        Utils.showToastShort(str("piko_copied_media_link"));
-
-                    } else if (selectedOption.equals(str("piko_open_video_externally")) || selectedOption.equals(str("piko_open_image_externally"))) {
-                        ActivityHook.handleUrlIntent(isCurrentMediaVideo, currentMediaData.getMediaLink());
-
-                    } else if (selectedOption.equals(str("piko_download_all"))) {
-                        downloadMedia(context, mediaInfo, -1, MediaType.ANY);
-
-                    } else if (selectedOption.equals(str("piko_download_audio"))) {
-                        downloadMedia(context, mediaInfo, position, MediaType.AUDIO);
-
-                    } else if (selectedOption.equals(str("piko_video_variants"))) {
-                        buildVariantDialogBox(context, currentMediaData, username, MediaType.VIDEO);
-
-                    } else if (selectedOption.equals(str("piko_image_variants"))) {
-                        buildVariantDialogBox(context, currentMediaData, username, MediaType.IMAGE);
-
-                    }
-                } catch (Exception e) {
-                    PikoUtils.logger(e);
-                    Logger.printException(() -> "Error at downloadDialogBox", e);
-                    Utils.showToastShort(e.getMessage());
-                }
-            }
-        });
-
-
-        dialog.setTitle(str("piko_download_options"));
-        dialog.setCancelable(true);
-        dialog.setCanceledOnTouchOutside(true);
-
-        Dialog dlg = dialog.getDialog();
-        dlg.show();
-    }
-
-
+    /**
+     * Entry point of every download button. Direct download saves the media being viewed. A single
+     * media always downloads straight away; a carousel opens the media picker sheet. Instagram
+     * serves the highest quality first, so no resolution is ever asked for.
+     */
     public static void downloadPost(Context context,  UserSession userSession, Object mediaObject, int position) {
         try {
             boolean ENABLE_DIRECT_DOWNLOAD = Pref.enableDirectDownload() && SettingsStatus.downloadMedia;
             position = position < 1 ? 0 : position;
             MediaData mediaInfo = new MediaData(mediaObject, userSession);
-            if (ENABLE_DIRECT_DOWNLOAD) {
+            if (ENABLE_DIRECT_DOWNLOAD || mediaInfo.getCarouselSize() <= 1) {
                 downloadMedia(context, mediaInfo, position, MediaType.ANY);
             } else {
-                downloadDialogBox(context, mediaInfo, position);
+                showDownloadSheet(context, mediaInfo);
             }
 
         } catch (Exception e) {
             PikoUtils.logger(e);
             Logger.printException(() -> "Error at downloadPost", e);
+        }
+    }
+
+    private static void showDownloadSheet(Context context, MediaData mediaInfo) throws Exception {
+        int carouselSize = mediaInfo.getCarouselSize();
+        List<DownloadItem> items = new ArrayList<>(carouselSize);
+        for (int index = 0; index < carouselSize; index++) {
+            MediaData mediaData = mediaInfo.getMediaAt(index);
+            boolean video = mediaData.isVideo();
+            items.add(new DownloadItem(
+                    str(video ? "piko_media_video" : "piko_media_photo"),
+                    mediaData.getMediaLink(),
+                    video));
+        }
+
+        DownloadSheet.show(context, items, feedDownloadUsername(mediaInfo), new DownloadSheet.Listener() {
+            @Override
+            public void onDownloadItem(int index) {
+                downloadFromSheet(context, mediaInfo, index);
+            }
+
+            @Override
+            public void onDownloadAll() {
+                downloadFromSheet(context, mediaInfo, -1);
+            }
+        });
+    }
+
+    private static void downloadFromSheet(Context context, MediaData mediaInfo, int position) {
+        try {
+            downloadMedia(context, mediaInfo, position, MediaType.ANY);
+        } catch (Exception e) {
+            PikoUtils.logger(e);
+            Logger.printException(() -> "Error at downloadFromSheet", e);
+            Utils.showToastShort(e.getMessage());
         }
     }
 

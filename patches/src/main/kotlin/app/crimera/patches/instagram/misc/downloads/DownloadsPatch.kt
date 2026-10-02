@@ -4,7 +4,7 @@
  * See the included NOTICE file for GPLv3 §7(b) terms that apply to this code.
  */
 
-package app.crimera.patches.instagram.misc.download
+package app.crimera.patches.instagram.misc.downloads
 
 import app.crimera.bytecode.Target
 import app.crimera.bytecode.insertHook
@@ -13,7 +13,6 @@ import app.crimera.patches.common.requireExactlyOne
 import app.crimera.patches.instagram.entity.decoder.CURRENT_MEDIA_FIELD
 import app.crimera.patches.instagram.entity.decoder.MEDIA_ADD_INFO_CLASS_NAME
 import app.crimera.patches.instagram.entity.decoder.decoderEntity
-import app.crimera.patches.instagram.entity.dialogbox.instagramDialogBoxEntity
 import app.crimera.patches.instagram.entity.mediadata.mediaDataEntity
 import app.crimera.patches.instagram.entity.originalSoundDataIntf.originalSoundDataIntfEntity
 import app.crimera.patches.instagram.entity.trackDataIntf.trackDataIntfEntity
@@ -128,18 +127,16 @@ private class UserSessionSource(
 )
 
 @Suppress("unused")
-val feedDownloadButtonPatch =
+val downloadsPatch =
     bytecodePatch(
-        name = "Download button on feed posts",
-        description = "Adds a download button beside the save icon on feed posts.",
+        name = "Downloads",
+        description =
+            "Adds a download button beside the save icon on feed posts. " +
+                "Posts with several media open a bottom sheet to pick what to save.",
     ) {
         compatibleWith(COMPATIBILITY_INSTAGRAM)
         dependsOn(
             sharedExtensionPatch,
-            // The download options dialog is an `InstagramDialogBox` wrapper. Without this
-            // entity patch its placeholder class/method names are never resolved, so the
-            // click handler dies in `addDialogMenuItems` with "Invoke failed: A0T".
-            instagramDialogBoxEntity,
             mediaDataEntity,
             videoDataEntity,
             originalSoundDataIntfEntity,
@@ -147,7 +144,7 @@ val feedDownloadButtonPatch =
             decoderEntity,
             resourceMappingPatch,
             // Download folder selection runs through the shared FolderPickerActivity, which has
-            // to be declared in the manifest, and every dialog/toast label uses the bundled piko
+            // to be declared in the manifest, and every sheet/toast label uses the bundled piko
             // string resources. Neither bootstrap is part of the base extension patch.
             addSettingsActivityPatch,
             addResourcesPatch,

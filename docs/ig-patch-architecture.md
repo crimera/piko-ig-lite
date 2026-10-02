@@ -117,7 +117,7 @@ the APK at patch time — class presence plus shape — not from the version str
   extension-descriptor gate.
 - `piko-ig-lite` wires the animalsniffer API floor, `lintResolvers` and
   `checkExtensionDescriptors` as verification tasks.
-- The feed download patch and its decoder closure are fail-closed: binder/selector lookups
+- The Downloads patch and its decoder closure are fail-closed: binder/selector lookups
   assert exactly one match, the image-variant accessor asserts at most one after `distinct()`,
   and order-contractual anchor scans carry directives explaining the contract.
 - The feed download button covers both UFI renderers. The view row binder hook serves the main

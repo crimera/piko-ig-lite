@@ -145,6 +145,15 @@ Note: On a clean install, the \'Tip\' animation may appear but will stop on its 
     <string name="piko_copy_media_link">Copy media link</string>
     <string name="piko_copied_media_link">Copied media link</string>
     <string name="piko_download_all">Download all</string>
+    <string name="piko_download_all_count">Download all (%1$d)</string>
+    <string name="piko_download_count">Download (%1$d)</string>
+    <string name="piko_download_sheet_title">Download media</string>
+    <string name="piko_download_sheet_from">From @%1$s</string>
+    <string name="piko_download_sheet_subtitle">Select media to save to your device</string>
+    <string name="piko_download_sheet_select_title">Select media</string>
+    <string name="piko_download_sheet_selected">%1$d of %2$d selected</string>
+    <string name="piko_media_photo">Photo</string>
+    <string name="piko_media_video">Video</string>
     <string name="piko_downloading_media">Downloading: </string>
     <string name="piko_downloaded_media">Downloaded: </string>
     <string name="piko_media_exists">Media exists</string>
