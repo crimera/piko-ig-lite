@@ -60,19 +60,20 @@ public class DownloadUtils {
     }
 
     /**
-     * Username used for downloaded file names. The user-data decoder is not part of the decoupled
-     * feed-download patch set, so fall back to a neutral name instead of failing the download.
+     * Username used for downloaded file names, read from the post's `Media`. Falls back to a
+     * neutral name instead of failing the download when the post carries no author.
      */
     private static String feedDownloadUsername(MediaData mediaData) {
-        try {
-            return mediaData.getUserData().getUsername();
-        } catch (Exception e) {
-            return "user";
-        }
+        String username = getMediaUsername(mediaData.getObject());
+        return username == null || username.isEmpty() ? "user" : username;
     }
 
-    private static void buildVariantDialogBox(Context context, MediaData currentMediaData, MediaType mediaType) throws Exception {
-        String username = feedDownloadUsername(currentMediaData);
+    /** The author username of a `Media`, or null. The patch replaces this body. */
+    static String getMediaUsername(Object media) {
+        return null;
+    }
+
+    private static void buildVariantDialogBox(Context context, MediaData currentMediaData, String username, MediaType mediaType) throws Exception {
         List<MediaInterface> variantList;
         String title = "";
         if(mediaType.equals(MediaType.VIDEO)){
@@ -169,10 +170,10 @@ public class DownloadUtils {
                         downloadMedia(context, mediaInfo, position, MediaType.AUDIO);
 
                     } else if (selectedOption.equals(str("piko_video_variants"))) {
-                        buildVariantDialogBox(context, currentMediaData, MediaType.VIDEO);
+                        buildVariantDialogBox(context, currentMediaData, username, MediaType.VIDEO);
 
                     } else if (selectedOption.equals(str("piko_image_variants"))) {
-                        buildVariantDialogBox(context, currentMediaData, MediaType.IMAGE);
+                        buildVariantDialogBox(context, currentMediaData, username, MediaType.IMAGE);
 
                     }
                 } catch (Exception e) {

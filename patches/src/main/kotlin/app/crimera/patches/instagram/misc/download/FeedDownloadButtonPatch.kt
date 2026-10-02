@@ -160,6 +160,7 @@ val feedDownloadButtonPatch =
             val saveButtonId = getResourceId(ResourceType.ID, "row_feed_button_save")
             val rowState = hookFeedRowBinder(saveButtonId)
             injectCurrentMediaIndex(rowState)
+            injectMediaUsername()
             pinMainFeedToViewUfi()
             injectLithoDownloadButton(
                 saveButtonId,
