@@ -37,6 +37,14 @@ public class ImageData implements MediaInterface {
         return this.obj.getUrl();
     }
 
+    /**
+     * The wrapped `ExtendedImageUrl`. The patch-emitted cache bridge reads the real width/height
+     * from this object, which is what the feed's cache key is built from.
+     */
+    public Object getObject() {
+        return this.obj;
+    }
+
     public MediaType getMediaType(){
         return MediaType.IMAGE;
     }

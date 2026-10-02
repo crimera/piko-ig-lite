@@ -92,6 +92,16 @@ internal fun Method.registerOfParameter(descriptor: String): Int {
     throw PatchException("Method $this has no $descriptor parameter")
 }
 
+/** Register of the parameter at zero-based [parameterIndex] in the declared parameter list. */
+internal fun Method.registerOfParameterIndex(parameterIndex: Int): Int {
+    var register = parameterRegisterStart() + if (AccessFlags.STATIC.isSet(accessFlags)) 0 else 1
+    parameterTypes.forEachIndexed { index, type ->
+        if (index == parameterIndex) return register
+        register += if (type.toString() == "J" || type.toString() == "D") 2 else 1
+    }
+    throw PatchException("Method $this has no parameter index $parameterIndex")
+}
+
 internal fun MethodReference.sameSignatureAs(other: MethodReference): Boolean =
     name == other.name &&
         returnType == other.returnType &&
@@ -158,6 +168,8 @@ val downloadsPatch =
             val rowState = hookFeedRowBinder(saveButtonId)
             injectCurrentMediaIndex(rowState)
             injectMediaUsername()
+            val bitmapChain = injectCachedBitmapLookup()
+            injectThumbnailMirror(bitmapChain)
             pinMainFeedToViewUfi()
             injectLithoDownloadButton(
                 saveButtonId,

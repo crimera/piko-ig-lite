@@ -120,6 +120,30 @@ the APK at patch time — class presence plus shape — not from the version str
 - The Downloads patch and its decoder closure are fail-closed: binder/selector lookups
   assert exactly one match, the image-variant accessor asserts at most one after `distinct()`,
   and order-contractual anchor scans carry directives explaining the contract.
+- Download sheet thumbnails ride emitted bridges resolved by the `SaveAsStickerHelper` /
+  `Error getting bitmap from cache` log anchors plus the static `(String) -> Bitmap` shape
+  (`LX/0PoN.A00` on 448, `LX/0VoK.A00` on 439). `ThumbnailLoader.cachedBitmap(String)` keeps
+  Instagram's own helper as the fallback tier and `cachedBitmap(Object, String)` replays the same
+  cache chain for the real `ExtendedImageUrl`, whose `ImageCacheKey` carries the width/height that a
+  `SimpleImageUrl` built from a bare URL always reports as -1. The app ships no
+  Coil/Glide/Fresco, so the loader probes each variant object and then its URL string against the
+  host cache and falls back to its own memory, disk and bounded-network tiers; a cache miss
+  returns null and never starts a load.
+- The instant tier is the extension-owned decode mirror. A typed return hook on every image cache
+  decode facade (anchored by `ImageInfraMemoryCache::decodeAndMaybeAdd`; one facade on 448, two on
+  439) copies the decoded bitmap into `ThumbnailMirror` under the `ImageCacheKey` identity string
+  (the field `hashCode` reads) held by the facade's `String` key parameter. The key parameter is
+  resolved from data flow at every external call site of the facade, the postprocessor slot from
+  the cache interface signature, and the bitmap field from the resolved cache chain; the hook
+  fails closed when any of those are ambiguous. The mirror stores RGB_565 copies capped at 256px
+  and 10MB, and falls back to Instagram's in-memory cache when it has no copy.
+- Behind the mirror, the loader also reads Instagram's own disk cache through
+  `igDiskKey`/`igDiskCaches`/`igDiskOpen`, emitted from the singleton/facade and the reader
+  anchored by `ERROR_CONTENT_ID_NULL_ON_DISK_CACHE_LOOKUP`. The reader's `Du2(String, Map)` call
+  resolves the holder, entry and `InputStream` field chain, and the facade's no-arg `List`
+  accessor enumerates every disk cache; a release that routes disk reads differently fails closed
+  instead of reading the wrong stream. Load order is mirror -> host -> Instagram disk -> own
+  memory/disk -> bounded network, with a per-item `tier=` log line under `PikoIgThumb`.
 - The feed download button covers both UFI renderers. The view row binder hook serves the main
   feed; Litho surfaces (e.g. the contextual profile feed) get a second icon component built
   into the UFI builder. The node, component, wrapper and factory shapes are derived from the

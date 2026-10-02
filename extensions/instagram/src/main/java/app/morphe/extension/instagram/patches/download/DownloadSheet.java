@@ -11,6 +11,7 @@ import static app.morphe.extension.instagram.utils.IgStr.str;
 import android.app.Activity;
 import android.content.Context;
 import android.content.ContextWrapper;
+import android.graphics.Bitmap;
 import android.view.HapticFeedbackConstants;
 import android.view.View;
 import android.widget.LinearLayout;
@@ -75,6 +76,7 @@ final class DownloadSheet {
         final Set<Integer> selected = new LinkedHashSet<>();
         final boolean[] selecting = {false};
         final List<ListItem> rows = new ArrayList<>(total);
+        final List<Bitmap> thumbnails = new ArrayList<>(total);
         final Runnable[] refresh = new Runnable[1];
 
         refresh[0] = () -> {
@@ -93,7 +95,7 @@ final class DownloadSheet {
             }
 
             for (int i = 0; i < total; i++) {
-                bindRow(activity, rows.get(i), downloads.get(i), i, selecting[0], selected, sheet, listener, refresh[0]);
+                bindRow(activity, rows.get(i), downloads.get(i), i, selecting[0], selected, sheet, listener, refresh[0], thumbnails.get(i));
             }
         };
 
@@ -124,6 +126,7 @@ final class DownloadSheet {
                 return true;
             });
             rows.add(row);
+            thumbnails.add(peekThumbnail(index, downloads.get(i)));
             list.addView(row);
         }
 
@@ -140,6 +143,51 @@ final class DownloadSheet {
         refresh[0].run();
         sheet.setScrollableBodyView(list);
         sheet.show();
+        loadThumbnails(activity, downloads, rows, thumbnails, sheet, selected, selecting);
+    }
+
+    /** Thumbnail already in memory, so the row opens with it instead of swapping in later. */
+    private static Bitmap peekThumbnail(int index, DownloadItem item) {
+        if (!ThumbnailLoader.isDownloadSheetThumbnailsEnabled()) return null;
+        try {
+            return ThumbnailLoader.peek("item[" + index + "]", item.cacheObjects, item.cacheUrls, item.thumbnailUrl);
+        } catch (Throwable throwable) {
+            return null;
+        }
+    }
+
+    /** Kicks off async preview loads; the media-type icon stays until a tier returns a bitmap. */
+    private static void loadThumbnails(
+            Activity activity,
+            List<DownloadItem> downloads,
+            List<ListItem> rows,
+            List<Bitmap> thumbnails,
+            BottomSheetView sheet,
+            Set<Integer> selected,
+            boolean[] selecting
+    ) {
+        if (!ThumbnailLoader.isDownloadSheetThumbnailsEnabled()) return;
+
+        for (int i = 0; i < downloads.size(); i++) {
+            final int index = i;
+            if (thumbnails.get(index) != null) continue;
+            DownloadItem item = downloads.get(i);
+            if (item.thumbnailUrl == null && item.cacheUrls.isEmpty()) continue;
+
+            ThumbnailLoader.load(activity, "item[" + index + "]", item.cacheObjects, item.cacheUrls, item.thumbnailUrl, bitmap -> {
+                if (bitmap == null || bitmap.isRecycled()) return;
+                thumbnails.set(index, bitmap);
+                if (!sheet.isShowing()) return;
+
+                ListItem row = rows.get(index);
+                if (!row.isAttachedToWindow()) return;
+                row.setLeadingImage(
+                        bitmap,
+                        selecting[0] && selected.contains(index)
+                                ? SheetTheme.primaryContainer(activity)
+                                : SheetTheme.surfaceVariant(activity));
+            });
+        }
     }
 
     private static void bindRow(
@@ -151,13 +199,21 @@ final class DownloadSheet {
             Set<Integer> selected,
             BottomSheetView sheet,
             Listener listener,
-            Runnable refresh
+            Runnable refresh,
+            Bitmap thumbnail
     ) {
         boolean isSelected = selected.contains(index);
-        row.setLeadingIcon(
-                item.video ? IconView.IconType.VIDEO : IconView.IconType.IMAGE,
-                SheetTheme.primaryAccent(activity),
-                selecting && isSelected ? SheetTheme.primaryContainer(activity) : SheetTheme.surfaceVariant(activity));
+        int badgeBg = selecting && isSelected
+                ? SheetTheme.primaryContainer(activity)
+                : SheetTheme.surfaceVariant(activity);
+        if (thumbnail != null && !thumbnail.isRecycled()) {
+            row.setLeadingImage(thumbnail, badgeBg);
+        } else {
+            row.setLeadingIcon(
+                    item.video ? IconView.IconType.VIDEO : IconView.IconType.IMAGE,
+                    SheetTheme.primaryAccent(activity),
+                    badgeBg);
+        }
 
         if (selecting) {
             row.createTrailingIconButton(

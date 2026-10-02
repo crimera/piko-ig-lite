@@ -8,6 +8,7 @@ package app.morphe.extension.instagram.ui;
 
 import android.content.Context;
 import android.content.res.ColorStateList;
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -18,6 +19,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -30,6 +32,7 @@ import androidx.annotation.Nullable;
 public class ListItem extends LinearLayout {
     private FrameLayout leadingContainer;
     private IconView leadingIconView;
+    private ImageView leadingImageView;
     private TextView titleView;
     private TextView subtitleView;
     private FrameLayout trailingContainer;
@@ -70,6 +73,13 @@ public class ListItem extends LinearLayout {
         FrameLayout.LayoutParams iconParams = new FrameLayout.LayoutParams(iconSize, iconSize);
         iconParams.gravity = Gravity.CENTER;
         leadingContainer.addView(leadingIconView, iconParams);
+
+        leadingImageView = new ImageView(context);
+        leadingImageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        leadingImageView.setVisibility(View.GONE);
+        leadingContainer.addView(leadingImageView, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
         addView(leadingContainer);
 
         // Title and subtitle.
@@ -121,9 +131,21 @@ public class ListItem extends LinearLayout {
     }
 
     public void setLeadingIcon(IconView.IconType iconType, int iconColor, int containerBgColor) {
+        leadingImageView.setImageDrawable(null);
+        leadingImageView.setVisibility(View.GONE);
+        leadingIconView.setVisibility(View.VISIBLE);
         leadingIconView.setIconType(iconType);
         leadingIconView.setIconColor(iconColor);
         setLeadingContainerBackground(containerBgColor);
+    }
+
+    /** Swaps the leading badge to a media preview; the icon stays behind it as the fallback. */
+    public void setLeadingImage(Bitmap image, int containerBgColor) {
+        if (image == null || image.isRecycled()) return;
+        setLeadingContainerBackground(containerBgColor);
+        leadingImageView.setImageBitmap(image);
+        leadingImageView.setVisibility(View.VISIBLE);
+        leadingIconView.setVisibility(View.GONE);
     }
 
     private void setLeadingContainerBackground(int color) {

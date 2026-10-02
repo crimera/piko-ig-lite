@@ -23,6 +23,7 @@ import java.lang.reflect.Field;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 
 import app.morphe.extension.instagram.constants.Constants;
 import app.morphe.extension.instagram.constants.UI;
@@ -31,13 +32,14 @@ import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.crimera.sharedPreference.SharedPref;
 import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.entity.MediaData;
+import app.morphe.extension.instagram.entity.ImageData;
 import app.morphe.extension.instagram.entity.UserData;
 import app.morphe.extension.instagram.entity.VideoData;
 import app.morphe.extension.instagram.entity.AudioMediaInterface;
 import app.morphe.extension.shared.Logger;
+import app.morphe.extension.instagram.utils.InstagramLogger;
 import app.morphe.extension.shared.ResourceType;
 import app.morphe.extension.shared.ResourceUtils;
-import app.morphe.extension.instagram.utils.InstagramLogger;
 import app.morphe.extension.shared.Utils;
 import app.morphe.extension.instagram.patches.Links;
 import app.morphe.extension.crimera.ObjectBrowser;
@@ -97,10 +99,24 @@ public class DownloadUtils {
         for (int index = 0; index < carouselSize; index++) {
             MediaData mediaData = mediaInfo.getMediaAt(index);
             boolean video = mediaData.isVideo();
+            List<ImageData> variants = sortedThumbnailVariants(mediaData);
+            List<Object> cacheObjects = new ArrayList<>(variants.size());
+            List<String> cacheUrls = new ArrayList<>(variants.size());
+            for (ImageData variant : variants) {
+                String url = imageUrl(variant);
+                if (url == null || cacheUrls.contains(url)) continue;
+                cacheObjects.add(imageObject(variant));
+                cacheUrls.add(url);
+            }
+            String networkUrl = smallThumbnailUrl(variants);
             items.add(new DownloadItem(
                     str(video ? "piko_media_video" : "piko_media_photo"),
                     mediaData.getMediaLink(),
-                    video));
+                    video,
+                    cacheObjects,
+                    cacheUrls,
+                    networkUrl));
+            logThumbnailCandidates(index, variants, cacheObjects, cacheUrls, networkUrl);
         }
 
         DownloadSheet.show(context, items, feedDownloadUsername(mediaInfo), new DownloadSheet.Listener() {
@@ -114,6 +130,109 @@ public class DownloadUtils {
                 downloadFromSheet(context, mediaInfo, -1);
             }
         });
+    }
+
+    private static final int THUMBNAIL_TARGET_SIZE_PX = 256;
+
+    /** Image variants of the item, largest (display) variant first. */
+    private static List<ImageData> sortedThumbnailVariants(MediaData mediaData) {
+        List<ImageData> variants = new ArrayList<>(imageVariants(mediaData));
+        variants.sort((left, right) -> Integer.compare(imageSize(right), imageSize(left)));
+        return variants;
+    }
+
+    /**
+     * One diagnostic line per sheet item: every candidate with its variant size and whether the
+     * real `ExtendedImageUrl` object is available for the object-key probe.
+     */
+    private static void logThumbnailCandidates(
+            int index,
+            List<ImageData> variants,
+            List<Object> cacheObjects,
+            List<String> cacheUrls,
+            String networkUrl
+    ) {
+        StringBuilder message = new StringBuilder(512);
+        message.append("item[").append(index).append("] candidates=").append(cacheUrls.size());
+        for (ImageData variant : variants) {
+            String url = imageUrl(variant);
+            if (url == null) continue;
+            int candidateIndex = cacheUrls.indexOf(url);
+            if (candidateIndex < 0) continue;
+            message.append(" | ").append(imageDimensions(variant))
+                    .append(cacheObjects.get(candidateIndex) == null ? " (no-obj) " : " (obj) ")
+                    .append(url);
+        }
+        message.append(" network=").append(networkUrl == null ? "<none>" : networkUrl);
+        ThumbnailLoader.logDiagnostic(message.toString());
+    }
+
+    /**
+     * Smallest variant at or above the badge target, so the network fallback stays cheap without
+     * looking soft. Falls back to the largest smaller variant when every image is tiny.
+     */
+    private static String smallThumbnailUrl(List<ImageData> variants) {
+        ImageData best = null;
+        int bestSize = 0;
+        for (ImageData variant : variants) {
+            int size = imageSize(variant);
+            if (size <= 0) continue;
+            if (best == null || preferNetworkVariant(size, bestSize)) {
+                best = variant;
+                bestSize = size;
+            }
+        }
+        return best == null ? null : imageUrl(best);
+    }
+
+    private static boolean preferNetworkVariant(int size, int currentSize) {
+        boolean sizeAboveTarget = size >= THUMBNAIL_TARGET_SIZE_PX;
+        boolean currentAboveTarget = currentSize >= THUMBNAIL_TARGET_SIZE_PX;
+        if (sizeAboveTarget != currentAboveTarget) return sizeAboveTarget;
+        return sizeAboveTarget ? size < currentSize : size > currentSize;
+    }
+
+    private static List<ImageData> imageVariants(MediaData mediaData) {
+        try {
+            List<ImageData> variants = mediaData.getImageVariants();
+            return variants == null ? Collections.emptyList() : variants;
+        } catch (Exception e) {
+            Logger.printDebug(() -> "Could not read the media image variants for a thumbnail");
+            return Collections.emptyList();
+        }
+    }
+
+    private static int imageSize(ImageData variant) {
+        try {
+            return Math.max(variant.getWidth(), variant.getHeight());
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    private static String imageDimensions(ImageData variant) {
+        try {
+            return variant.getWidth() + "x" + variant.getHeight();
+        } catch (Exception e) {
+            return "?x?";
+        }
+    }
+
+    private static String imageUrl(ImageData variant) {
+        try {
+            return variant.getUrl();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** The real `ExtendedImageUrl` object, or null when the entity cannot expose it. */
+    private static Object imageObject(ImageData variant) {
+        try {
+            return variant.getObject();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private static void downloadFromSheet(Context context, MediaData mediaInfo, int position) {

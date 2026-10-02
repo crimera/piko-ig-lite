@@ -152,6 +152,8 @@ Note: On a clean install, the \'Tip\' animation may appear but will stop on its 
     <string name="piko_download_sheet_subtitle">Select media to save to your device</string>
     <string name="piko_download_sheet_select_title">Select media</string>
     <string name="piko_download_sheet_selected">%1$d of %2$d selected</string>
+    <string name="piko_download_sheet_thumbnails">Show media thumbnails</string>
+    <string name="piko_download_sheet_thumbnails_desc">Loads a preview image for each media in the download sheet</string>
     <string name="piko_media_photo">Photo</string>
     <string name="piko_media_video">Video</string>
     <string name="piko_downloading_media">Downloading: </string>
