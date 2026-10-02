@@ -20,13 +20,12 @@ import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.instagram.utils.InstagramLogger;
 import app.morphe.extension.shared.Utils;
 import app.morphe.extension.instagram.constants.PostType;
-import app.morphe.extension.instagram.constants.Constants;
 import app.morphe.extension.crimera.PikoUtils;
 
-import app.morphe.extension.instagram.settings.ActivityHook;
 
 @SuppressWarnings("unused")
 public class Links {
+    private static final String INSTAGRAM_SHARE_LINK = "https://www.instagram.com/%s/%s/";
     private static final boolean DISABLE_ANALYTICS;
     private static final boolean DISABLE_STORIES;
     private static final boolean DISABLE_EXPLORE;
@@ -190,7 +189,7 @@ public class Links {
             postShortCode = mediaData.getUserData().getUsername();
         }
 
-        String link = String.format(Constants.INSTAGRAM_SHARE_LINK, shortTag, postShortCode);
+        String link = String.format(INSTAGRAM_SHARE_LINK, shortTag, postShortCode);
 
         if(postType.equals(PostType.STORY)){
             String postID = mediaData.getPostID();

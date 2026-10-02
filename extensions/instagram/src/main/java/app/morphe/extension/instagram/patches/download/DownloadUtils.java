@@ -25,8 +25,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 
-import app.morphe.extension.instagram.constants.Constants;
-import app.morphe.extension.instagram.constants.UI;
 import app.morphe.extension.instagram.settings.Settings;
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.crimera.sharedPreference.SharedPref;
@@ -51,6 +49,8 @@ import app.morphe.extension.crimera.PikoUtils;
 import com.instagram.common.session.UserSession;
 
 public class DownloadUtils {
+    private static final String DEFAULT_AUDIO_FOLDER = "Audio";
+    private static final String DRAWABLE_DOWNLOAD_ICON = "instagram_download_outline_24";
 
     public static String getSubfolderName(String username){
         boolean SPLIT_BY_USERNAME = Pref.downloadUsernameFolder() && SettingsStatus.downloadMedia;
@@ -259,7 +259,7 @@ public class DownloadUtils {
             AudioMediaInterface audioMedia = mediaInfo.getMediaAt(position).getAudioMedia();
             String audioUrl = audioMedia.getAudioUrl();
             String fileName = audioMedia.getDownloadName() + ".mp3";
-            downloader.enqueue(new DownloadRequest(audioUrl, Constants.DEFAULT_AUDIO_FOLDER, fileName));
+            downloader.enqueue(new DownloadRequest(audioUrl, DEFAULT_AUDIO_FOLDER, fileName));
 
         } else if (position != -1) {
             MediaData mediaData = mediaInfo.getMediaAt(position);
@@ -403,7 +403,7 @@ public class DownloadUtils {
 
     /** Uses the row context: the application context cannot resolve activity scoped theme attributes. */
     private static void applyFeedDownloadIcon(ImageView button, Context context) {
-        int drawableId = ResourceUtils.getIdentifier(context, ResourceType.DRAWABLE, UI.DRAWABLE_DOWNLOAD_ICON);
+        int drawableId = ResourceUtils.getIdentifier(context, ResourceType.DRAWABLE, DRAWABLE_DOWNLOAD_ICON);
         if (drawableId == 0) return;
         button.setImageDrawable(context.getDrawable(drawableId));
 
