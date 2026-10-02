@@ -11,7 +11,7 @@ import java.util.List;
 
 import app.morphe.extension.crimera.sharedPreference.SharedPref;
 import app.morphe.extension.instagram.settings.Settings;
-import app.morphe.extension.shared.Logger;
+import app.morphe.extension.instagram.utils.InstagramLogger;
 
 /**
  * Filters the main feed once per parsed page, before the feed response stores its items.
@@ -38,7 +38,7 @@ public final class FeedFilter {
                 if (isAd(iterator.next())) iterator.remove();
             }
         } catch (Exception e) {
-            Logger.printException(() -> "filterFeedItems failure", e);
+            InstagramLogger.printException(() -> "filterFeedItems failure", e);
         }
         return items;
     }

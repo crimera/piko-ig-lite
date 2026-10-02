@@ -18,7 +18,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import app.morphe.extension.shared.Utils;
-import app.morphe.extension.shared.Logger;
+import app.morphe.extension.instagram.utils.InstagramLogger;
 
 import app.morphe.extension.instagram.patches.download.DownloadUtils;
 import app.morphe.extension.instagram.entity.InstagramDialogBox;
@@ -71,7 +71,7 @@ public class MoreOptionsOnPostPatch {
                             Utils.showToastShort(str("piko_copied"));
                         }
                     } catch (Exception e) {
-                        Logger.printException(() -> "Error at postMoreOptions addDialogMenuItems", e);
+                        InstagramLogger.printException(() -> "Error at postMoreOptions addDialogMenuItems", e);
                         Utils.showToastShort(e.getMessage());
                     }
                 }
@@ -86,7 +86,7 @@ public class MoreOptionsOnPostPatch {
 
 
         } catch (Exception e) {
-            Logger.printException(() -> "postMoreOptions failure", e);
+            InstagramLogger.printException(() -> "postMoreOptions failure", e);
         }
     }
 

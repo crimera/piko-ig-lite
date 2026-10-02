@@ -11,7 +11,7 @@ package app.morphe.extension.instagram.patches;
 import android.content.Context;
 
 import app.morphe.extension.instagram.utils.Pref;
-import app.morphe.extension.shared.Logger;
+import app.morphe.extension.instagram.utils.InstagramLogger;
 import app.morphe.extension.instagram.constants.UI;
 
 @SuppressWarnings("unused")
@@ -23,7 +23,7 @@ public class WelcomeMessage {
                 UI.welcomeDialogBox(context);
             }
         } catch (Exception ex) {
-            Logger.printException(() -> "openWelcomeMessage failure", ex);
+            InstagramLogger.printException(() -> "openWelcomeMessage failure", ex);
         }
     }
 

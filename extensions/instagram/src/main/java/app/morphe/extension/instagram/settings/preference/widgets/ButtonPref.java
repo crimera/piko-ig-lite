@@ -14,7 +14,7 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import app.morphe.extension.shared.Utils;
-import app.morphe.extension.shared.Logger;
+import app.morphe.extension.instagram.utils.InstagramLogger;
 import app.morphe.extension.instagram.settings.ActivityHook;
 import app.morphe.extension.instagram.constants.Constants;
 import app.morphe.extension.instagram.settings.preference.fragments.FragmentHook;
@@ -87,7 +87,7 @@ public class ButtonPref extends Preference {
                     }
                 } catch (Exception e) {
                     Utils.showToastShort(e.getMessage());
-                    Logger.printException(() -> "Preference button onclick failure", e);
+                    InstagramLogger.printException(() -> "Preference button onclick failure", e);
                 }
                 return true;
             }

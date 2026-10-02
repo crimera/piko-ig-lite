@@ -6,6 +6,7 @@
 
 package app.morphe.extension.instagram.settings.preference.fragments;
 
+import app.morphe.extension.instagram.utils.InstagramLogger;
 import static app.morphe.extension.instagram.utils.IgStr.str;
 
 import android.content.Context;
@@ -104,7 +105,7 @@ public class BackupPrefActivity extends AppCompatActivity {
 
             toast(str("piko_export_fail"));
 
-            app.morphe.extension.shared.Logger.printException(() -> "export failure", e);
+            InstagramLogger.printException(() -> "export failure", e);
         }
     }
 

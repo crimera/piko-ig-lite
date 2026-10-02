@@ -33,7 +33,7 @@ import app.morphe.extension.instagram.entity.Entity;
 import app.morphe.extension.instagram.entity.ProfileInfo;
 import app.morphe.extension.instagram.entity.InstagramDialogBox;
 
-import app.morphe.extension.shared.Logger;
+import app.morphe.extension.instagram.utils.InstagramLogger;
 
 import com.instagram.common.session.UserSession;
 
@@ -157,7 +157,7 @@ public class FriendshipStatusIndicator {
                 addFriendshipTextView(badgeView, userFriendshipStatus, indicatorText, colorHex);
 
             } catch (Exception ex) {
-                Logger.printException(() -> "Failed follow back indicator", ex);
+                InstagramLogger.printException(() -> "Failed follow back indicator", ex);
             }
         }
     }

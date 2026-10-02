@@ -57,8 +57,9 @@ settings {
 }
 
 // Shared patch infrastructure lives in its own repository and is consumed as
-// app.crimera:piko-patches-library from GitHub Packages. A sibling checkout substitutes the
-// published artifact so library changes can be tested without publishing first.
+// app.crimera:piko-patches-library (patch side) and app.crimera:piko-extension-library (in-app
+// code) from GitHub Packages. A sibling checkout substitutes the published artifacts so library
+// changes can be tested without publishing first.
 val pikoLibraryBuild =
     listOf("../piko-patches-library", "piko-patches-library-lib")
         .map { rootDir.resolve(it) }
@@ -67,6 +68,7 @@ if (pikoLibraryBuild != null) {
     includeBuild(pikoLibraryBuild) {
         dependencySubstitution {
             substitute(module("app.crimera:piko-patches-library")).using(project(":"))
+            substitute(module("app.crimera:piko-extension-library")).using(project(":extension"))
         }
     }
 }

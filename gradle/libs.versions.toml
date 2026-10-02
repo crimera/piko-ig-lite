@@ -2,6 +2,7 @@
 morphe-patcher = "1.6.0"
 morphe-patches-library = "1.5.0"
 piko-patches-library = "0.1.1"
+piko-extension-library = "0.2.0"
 #noinspection GradleDependency
 smali = "d92701d947"
 gson = "2.14.0"
@@ -12,6 +13,7 @@ appcompat = "1.7.1"
 morphe-patches-library = { module = "app.morphe:morphe-patches-library", version.ref = "morphe-patches-library" }
 morphe-extensions-library = { module = "app.morphe:morphe-extensions-library", version.ref = "morphe-patches-library" }
 piko-patches-library = { module = "app.crimera:piko-patches-library", version.ref = "piko-patches-library" }
+piko-extension-library = { module = "app.crimera:piko-extension-library", version.ref = "piko-extension-library" }
 annotation = { module = "androidx.annotation:annotation", version.ref = "annotation" }
 appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }

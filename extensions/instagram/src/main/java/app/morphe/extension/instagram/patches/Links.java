@@ -17,7 +17,7 @@ import app.morphe.extension.instagram.entity.Entity;
 import app.morphe.extension.instagram.entity.MediaData;
 import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.utils.Pref;
-import app.morphe.extension.shared.Logger;
+import app.morphe.extension.instagram.utils.InstagramLogger;
 import app.morphe.extension.shared.Utils;
 import app.morphe.extension.instagram.constants.PostType;
 import app.morphe.extension.instagram.constants.Constants;
@@ -81,7 +81,7 @@ public class Links {
                 }
             }
         } catch (Exception ex) {
-            Logger.printException(() -> "openExternally failure", ex);
+            InstagramLogger.printException(() -> "openExternally failure", ex);
         }
         return false;
     }
@@ -132,7 +132,7 @@ public class Links {
             }
 
         } catch (Exception ex) {
-            Logger.printException(() -> "intercept URI failed: ", ex);
+            InstagramLogger.printException(() -> "intercept URI failed: ", ex);
         }
         // Exception is hanndled at call.
         if(shouldBlockUri) {
@@ -149,7 +149,7 @@ public class Links {
                     .replaceAll("([&?])fbclid=[^&]*", "")
                     .replaceAll("([&?])si=[^&]*", "");
         } catch (Exception e) {
-            Logger.printException(() -> "sanitizeUrl failed: ", e);
+            InstagramLogger.printException(() -> "sanitizeUrl failed: ", e);
         }
         return url;
     }
@@ -171,7 +171,7 @@ public class Links {
                 }
             }
         } catch (Exception e) {
-            Logger.printException(() -> "Handle signature failed: ", e);
+            InstagramLogger.printException(() -> "Handle signature failed: ", e);
         }
         return false;
     }

@@ -11,7 +11,7 @@ import java.util.Date;
 import java.util.Locale;
 
 import app.morphe.extension.instagram.utils.Pref;
-import app.morphe.extension.shared.Logger;
+import app.morphe.extension.instagram.utils.InstagramLogger;
 
 public class StoryTimestamp {
     private static String CUSTOMISE_STORY_TIMESTAMP;
@@ -57,7 +57,7 @@ public class StoryTimestamp {
             }
 
         } catch (Exception e) {
-            Logger.printException(() -> "customiseStoryTimestamp failure", e);
+            InstagramLogger.printException(() -> "customiseStoryTimestamp failure", e);
         }
 
         return formatedTS;

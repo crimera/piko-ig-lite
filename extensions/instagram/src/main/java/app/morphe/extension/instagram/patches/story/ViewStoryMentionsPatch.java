@@ -17,7 +17,7 @@ import android.view.View;
 import app.morphe.extension.instagram.entity.UserData;
 import app.morphe.extension.instagram.entity.MediaData;
 
-import app.morphe.extension.shared.Logger;
+import app.morphe.extension.instagram.utils.InstagramLogger;
 import app.morphe.extension.crimera.PikoUtils;
 
 import com.instagram.igds.components.peoplecell.IgdsPeopleCell;
@@ -53,7 +53,7 @@ public class ViewStoryMentionsPatch {
 
                         peopleCells.add(cell);
                     } catch (Exception ex){
-                            Logger.printException(() -> "Failed story mention user extraction", ex);
+                            InstagramLogger.printException(() -> "Failed story mention user extraction", ex);
                             PikoUtils.logger(ex);
                     }
                 });
@@ -61,7 +61,7 @@ public class ViewStoryMentionsPatch {
             PeopleCellDialogBox.showPeopleDialog(context, peopleCells);
 
         } catch (Exception ex){
-            Logger.printException(() -> "Failed viewMentions", ex);
+            InstagramLogger.printException(() -> "Failed viewMentions", ex);
             PikoUtils.logger(ex);
         }
     }

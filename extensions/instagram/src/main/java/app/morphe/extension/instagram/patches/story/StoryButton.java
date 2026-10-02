@@ -15,7 +15,7 @@ import android.content.Context;
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.entity.MediaData;
-import app.morphe.extension.shared.Logger;
+import app.morphe.extension.instagram.utils.InstagramLogger;
 import app.morphe.extension.shared.Utils;
 import app.morphe.extension.instagram.patches.download.DownloadUtils;
 import app.morphe.extension.crimera.ObjectBrowser;
@@ -74,7 +74,7 @@ public class StoryButton {
                 return true;
             }
         } catch (Exception ex) {
-            Logger.printException(() -> "Failed storyButtonAction", ex);
+            InstagramLogger.printException(() -> "Failed storyButtonAction", ex);
         }
         return false;
     }

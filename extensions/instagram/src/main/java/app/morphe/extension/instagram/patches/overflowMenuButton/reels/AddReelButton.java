@@ -14,7 +14,7 @@ import android.content.Context;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
-import app.morphe.extension.shared.Logger;
+import app.morphe.extension.instagram.utils.InstagramLogger;
 import app.morphe.extension.shared.ResourceType;
 import app.morphe.extension.shared.ResourceUtils;
 
@@ -49,7 +49,7 @@ public class AddReelButton {
                 method.invoke(helperObject, context, reelOverflowButton.reelButton, reelOverflowButton.buttonText, icon);
 
         } catch (Exception e) {
-            Logger.printException(() -> "Error at addReelButton",e);
+            InstagramLogger.printException(() -> "Error at addReelButton",e);
         }
     }
 

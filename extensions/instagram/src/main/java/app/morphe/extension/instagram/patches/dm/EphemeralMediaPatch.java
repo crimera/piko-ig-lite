@@ -9,7 +9,7 @@ package app.morphe.extension.instagram.patches.dm;
 
 import app.morphe.extension.instagram.entity.Entity;
 import app.morphe.extension.instagram.utils.Pref;
-import app.morphe.extension.shared.Logger;
+import app.morphe.extension.instagram.utils.InstagramLogger;
 
 @SuppressWarnings("unused")
 public class EphemeralMediaPatch {
@@ -32,7 +32,7 @@ public class EphemeralMediaPatch {
             viewMode = currentTime <= expireAtConv && !viewMode.equals(PERMA_KEY) ? PERMA_KEY : viewMode;
 
         } catch (Exception e) {
-            Logger.printException(() -> "error makeEphemeralMediaPermanent: " + e);
+            InstagramLogger.printException(() -> "error makeEphemeralMediaPermanent: " + e);
         }
         return viewMode;
     }

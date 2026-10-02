@@ -14,7 +14,7 @@ import android.view.ViewGroup;
 import android.view.ViewGroup.MarginLayoutParams;
 import android.animation.ObjectAnimator;
 
-import app.morphe.extension.shared.Logger;
+import app.morphe.extension.instagram.utils.InstagramLogger;
 import app.morphe.extension.instagram.entity.Entity;
 import app.morphe.extension.instagram.entity.InstagramButtonStyleEnum;
 
@@ -43,7 +43,7 @@ public class InstagramButton extends FrameLayout {
                 try {
                     action.run();
                 } catch (Exception ex) {
-                    Logger.printException(() -> "Button click failed: ", ex);
+                    InstagramLogger.printException(() -> "Button click failed: ", ex);
                 }
             }
         });
@@ -66,7 +66,7 @@ public class InstagramButton extends FrameLayout {
             setStyleObject(buttonStyle);
 
         } catch (Exception ex) {
-            Logger.printException(() -> "Button setStyle failed: ", ex);
+            InstagramLogger.printException(() -> "Button setStyle failed: ", ex);
         }
     }
 

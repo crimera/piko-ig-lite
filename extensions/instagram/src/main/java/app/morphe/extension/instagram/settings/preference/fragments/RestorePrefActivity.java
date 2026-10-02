@@ -23,7 +23,7 @@ import android.content.Context;
 
 import app.morphe.extension.instagram.constants.UI;
 import app.morphe.extension.instagram.constants.Constants;
-import app.morphe.extension.shared.Logger;
+import app.morphe.extension.instagram.utils.InstagramLogger;
 import app.morphe.extension.shared.Utils;
 
 public class RestorePrefActivity extends AppCompatActivity {
@@ -87,7 +87,7 @@ public class RestorePrefActivity extends AppCompatActivity {
 
         } catch (Exception e) {
             toast(str("piko_import_fail"));
-            Logger.printException(() -> "import failure", e);
+            InstagramLogger.printException(() -> "import failure", e);
         }
     }
 

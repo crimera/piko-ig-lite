@@ -17,7 +17,7 @@ import app.morphe.extension.instagram.settings.preference.widgets.ButtonPref;
 import app.morphe.extension.instagram.settings.preference.widgets.EditTextPref;
 import app.morphe.extension.instagram.settings.preference.widgets.MultiSelectListPref;
 import app.morphe.extension.shared.Utils;
-import app.morphe.extension.shared.Logger;
+import app.morphe.extension.instagram.utils.InstagramLogger;
 
 import app.morphe.extension.crimera.sharedPreference.SharedPref;
 import app.morphe.extension.crimera.settings.BooleanSetting;
@@ -114,7 +114,7 @@ public class Helper {
 
         } catch (Exception ex) {
             Utils.showToastShort(ex.toString());
-            Logger.printException(() -> "Failed setting pref: ", ex);
+            InstagramLogger.printException(() -> "Failed setting pref: ", ex);
         }
     }
 }

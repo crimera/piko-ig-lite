@@ -20,7 +20,7 @@ import android.widget.RadioGroup;
 import app.morphe.extension.crimera.sharedPreference.SharedPref;
 import app.morphe.extension.instagram.settings.Settings;
 import app.morphe.extension.instagram.utils.IgStr;
-import app.morphe.extension.shared.Logger;
+import app.morphe.extension.instagram.utils.InstagramLogger;
 import app.morphe.extension.shared.ResourceType;
 import app.morphe.extension.shared.ResourceUtils;
 import app.morphe.extension.shared.Utils;
@@ -623,7 +623,7 @@ public final class MaterialYouTheme {
             return;
         }
         initializationFailureLogged = true;
-        Logger.printException(
+        InstagramLogger.printException(
                 () -> "Failed to initialize theme resources: ",
                 exception
         );

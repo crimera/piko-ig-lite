@@ -25,7 +25,7 @@ import app.morphe.extension.crimera.PikoUtils;
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.instagram.entity.InstagramDialogBox;
 import app.morphe.extension.instagram.settings.preference.fragments.FragmentHook;
-import app.morphe.extension.shared.Logger;
+import app.morphe.extension.instagram.utils.InstagramLogger;
 import app.morphe.extension.shared.ResourceType;
 import app.morphe.extension.shared.ResourceUtils;
 import app.morphe.extension.shared.Utils;
@@ -73,7 +73,7 @@ public class UI {
             imageView.setColorFilter(new PorterDuffColorFilter(getThemedColour("igds_color_primary_icon"), PorterDuff.Mode.SRC_ATOP));
 
         } catch (Exception ex) {
-            Logger.printException(() -> "Failed setThemedIcon: ", ex);
+            InstagramLogger.printException(() -> "Failed setThemedIcon: ", ex);
         }
     }
 
@@ -99,7 +99,7 @@ public class UI {
                         try {
                             action.run();
                         } catch (Exception ex) {
-                            Logger.printException(() -> "addImageViewToViewGroup click failed: ", ex);
+                            InstagramLogger.printException(() -> "addImageViewToViewGroup click failed: ", ex);
                         }
                     }
                 });
@@ -116,7 +116,7 @@ public class UI {
             viewGroup.addView(imageView, insertIndex);
             return imageView;
         } catch (Exception e) {
-            Logger.printException(() -> "Failed addImageViewToViewGroup: ", e);
+            InstagramLogger.printException(() -> "Failed addImageViewToViewGroup: ", e);
         }
         return null;
     }
@@ -139,7 +139,7 @@ public class UI {
                 Pref.setFirstTimePiko(false);
             }
         } catch (Exception e) {
-            Logger.printException(() -> "Failed pikoSettingsGear: ", e);
+            InstagramLogger.printException(() -> "Failed pikoSettingsGear: ", e);
         }
     }
 
@@ -162,7 +162,7 @@ public class UI {
 
                     }
                 } catch (Exception e) {
-                    Logger.printException(() -> "Error at restartDialogBox", e);
+                    InstagramLogger.printException(() -> "Error at restartDialogBox", e);
                     Utils.showToastShort(e.getMessage());
                 }
             }
@@ -196,7 +196,7 @@ public class UI {
                     }
 
                 } catch (Exception e) {
-                    Logger.printException(() -> "Error at welcomeDialogBox", e);
+                    InstagramLogger.printException(() -> "Error at welcomeDialogBox", e);
                     Utils.showToastShort(e.getMessage());
                 }
             }

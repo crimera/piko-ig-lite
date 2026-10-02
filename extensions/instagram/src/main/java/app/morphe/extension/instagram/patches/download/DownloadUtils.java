@@ -37,6 +37,7 @@ import app.morphe.extension.instagram.entity.AudioMediaInterface;
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.ResourceType;
 import app.morphe.extension.shared.ResourceUtils;
+import app.morphe.extension.instagram.utils.InstagramLogger;
 import app.morphe.extension.shared.Utils;
 import app.morphe.extension.instagram.patches.Links;
 import app.morphe.extension.crimera.ObjectBrowser;
@@ -86,7 +87,7 @@ public class DownloadUtils {
 
         } catch (Exception e) {
             PikoUtils.logger(e);
-            Logger.printException(() -> "Error at downloadPost", e);
+            InstagramLogger.printException(() -> "Error at downloadPost", e);
         }
     }
 
@@ -120,7 +121,7 @@ public class DownloadUtils {
             downloadMedia(context, mediaInfo, position, MediaType.ANY);
         } catch (Exception e) {
             PikoUtils.logger(e);
-            Logger.printException(() -> "Error at downloadFromSheet", e);
+            InstagramLogger.printException(() -> "Error at downloadFromSheet", e);
             Utils.showToastShort(e.getMessage());
         }
     }
@@ -215,7 +216,7 @@ public class DownloadUtils {
             button.setOnClickListener(
                     v -> downloadPost(context, userSession, media, currentMediaIndex(rowState)));
         } catch (Exception e) {
-            Logger.printException(() -> "addFeedDownloadButton failure", e);
+            InstagramLogger.printException(() -> "addFeedDownloadButton failure", e);
         }
     }
 
@@ -238,7 +239,7 @@ public class DownloadUtils {
                 if (media != null) return media;
             }
         } catch (Exception e) {
-            Logger.printException(() -> "Could not extract the media from the feed row state", e);
+            InstagramLogger.printException(() -> "Could not extract the media from the feed row state", e);
         }
         return source;
     }
@@ -312,7 +313,7 @@ public class DownloadUtils {
             PikoUtils.shareTextToPackageName(link, packageName);
         } catch (Exception e){
             PikoUtils.logger(e);
-            Logger.printException(() -> "Error at externalDownloader", e);
+            InstagramLogger.printException(() -> "Error at externalDownloader", e);
         }
     }
 }

@@ -16,7 +16,7 @@ import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import app.morphe.extension.shared.Logger;
+import app.morphe.extension.instagram.utils.InstagramLogger;
 import app.morphe.extension.shared.Utils;
 import app.morphe.extension.instagram.entity.UserData;
 import app.morphe.extension.instagram.entity.ProfileInfo;
@@ -123,7 +123,7 @@ public class ProfileMoreOption {
                             Utils.showToastShort(str("piko_copied"));
                         }
                     } catch (Exception e) {
-                        Logger.printException(() -> "Error at moreOptionsDailogueBox onclick", e);
+                        InstagramLogger.printException(() -> "Error at moreOptionsDailogueBox onclick", e);
                         Utils.showToastShort(e.getMessage());
                     }
                 }
@@ -135,7 +135,7 @@ public class ProfileMoreOption {
             Dialog dlg = dialog.getDialog();
             dlg.show();
         } catch (Exception e) {
-            Logger.printException(() -> "Error at moreOptionsDailogueBox", e);
+            InstagramLogger.printException(() -> "Error at moreOptionsDailogueBox", e);
             Utils.showToastShort(e.getMessage());
         }
     }
@@ -183,7 +183,7 @@ public class ProfileMoreOption {
             viewGroup.requestLayout();
             viewGroup.invalidate();
         } catch (Exception e) {
-            Logger.printException(() -> "Failed to add profile more button: ", e);
+            InstagramLogger.printException(() -> "Failed to add profile more button: ", e);
         }
     }
 }
