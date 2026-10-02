@@ -37,6 +37,13 @@ extensions/shared/     Shared extension runtime (piko fork + Morphe extensions l
 ./patch-ig.sh path/to/instagram.apk
 ```
 
+To iterate against a local morphe-patcher checkout instead of the shipped CLI jar, build the
+runner once with `(cd ../morphe-patcher && ./gradlew :cli:installDist)` and use:
+
+```bash
+./patch-ig-cli.sh path/to/instagram.apk   # output: ~/Downloads/piko-ig-lite-patched-cli.apk
+```
+
 ## Verification
 
 ```bash
