@@ -13,7 +13,6 @@ import android.graphics.ColorFilter;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
 import android.graphics.drawable.Drawable;
-import android.graphics.drawable.InsetDrawable;
 import android.util.TypedValue;
 
 import com.instagram.common.session.UserSession;
@@ -44,12 +43,11 @@ import kotlin.jvm.functions.Function1;
  * impression callback must stay untouched: it runs whenever a reel is shown.
  */
 public final class ReelDownload {
-    private static final String DRAWABLE_DOWNLOAD_ICON = "instagram_download_outline_24";
     /**
-     * The other icons carry their own padding, while the download glyph fills its whole slot, so it is inset
-     * to match their visual size. A fraction of each side.
+     * The reels icons are drawn from the 44 size family (the save icon is `instagram_save_outline_44`), whose
+     * padding and stroke weight the 24 size vector does not match, so the download icon comes from it too.
      */
-    private static final float ICON_INSET = 0.12f;
+    private static final String DRAWABLE_DOWNLOAD_ICON = "instagram_download_outline_44";
 
     /** The attribute the save icon is tinted with when its component carries no color filter of its own. */
     private static final String ICON_TINT_ATTRIBUTE = "igds_color_primary_button_on_media";
@@ -102,7 +100,7 @@ public final class ReelDownload {
         Context context = Utils.getContext();
         int drawableId = ResourceUtils.getIdentifier(context, ResourceType.DRAWABLE, DRAWABLE_DOWNLOAD_ICON);
         if (drawableId == 0) throw new IllegalStateException("Missing drawable " + DRAWABLE_DOWNLOAD_ICON);
-        Drawable drawable = new InsetDrawable(context.getDrawable(drawableId).mutate(), ICON_INSET);
+        Drawable drawable = context.getDrawable(drawableId).mutate();
         drawable.setColorFilter(copy.tint != null ? copy.tint : themeTint(copy.context));
         return drawable;
     }
