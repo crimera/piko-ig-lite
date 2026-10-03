@@ -30,6 +30,39 @@ public final class FeedDownloadClickFunction implements Function1<Object, Object
     private final UserSession userSession;
     private final Object mediaSource;
 
+    /**
+     * The long press handler paired with [click]: the Litho node takes a second handler for it, and
+     * holding the button offers the chooser. It consumes the press by returning {@code true}, like the
+     * handler it sits beside.
+     */
+    public static Function1<Object, Object> longClick(Function1<Object, Object> click) {
+        FeedDownloadClickFunction function = (FeedDownloadClickFunction) click;
+        return new LongClick(function.context, function.userSession, function.mediaSource);
+    }
+
+    /** A named class, not a lambda: the extension build does not desugar a lambda into a Kotlin `Function1`. */
+    private static final class LongClick implements Function1<Object, Object> {
+        private final Context context;
+        private final UserSession userSession;
+        private final Object mediaSource;
+
+        LongClick(Context context, UserSession userSession, Object mediaSource) {
+            this.context = context;
+            this.userSession = userSession;
+            this.mediaSource = mediaSource;
+        }
+
+        @Override
+        public Object invoke(Object ignored) {
+            DownloadUtils.downloadPostChooser(
+                    context,
+                    userSession,
+                    DownloadUtils.extractMedia(mediaSource),
+                    DownloadUtils.currentMediaIndex(mediaSource));
+            return Boolean.TRUE;
+        }
+    }
+
     public FeedDownloadClickFunction(Context context, UserSession userSession, Object mediaSource) {
         this.context = context;
         this.userSession = userSession;

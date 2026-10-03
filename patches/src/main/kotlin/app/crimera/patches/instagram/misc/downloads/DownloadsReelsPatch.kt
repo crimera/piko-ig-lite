@@ -49,7 +49,7 @@ private const val MEDIA_DESCRIPTOR = "Lcom/instagram/feed/media/Media;"
 
 /** Names of the view properties the tap and long press handlers are stored under. */
 private const val ON_CLICK_PROPERTY = "ON_CLICK"
-private const val ON_LONG_CLICK_PROPERTY = "ON_LONG_CLICK"
+internal const val ON_LONG_CLICK_PROPERTY = "ON_LONG_CLICK"
 
 /** The reels save button: its component sets this id and tag on its icon. */
 private const val REEL_SAVE_BUTTON_ID = "save_button"
@@ -378,7 +378,7 @@ private fun Block.replaceValue(
  * setter reads an enum constant, and that enum's static initializer names the constant.
  */
 context(patchContext: BytecodePatchContext)
-private fun setsViewProperty(
+internal fun setsViewProperty(
     reference: MethodReference,
     propertyName: String,
 ): Boolean {

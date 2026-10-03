@@ -72,8 +72,24 @@ public class DownloadUtils {
      * serves the highest quality first, so no resolution is ever asked for.
      */
     public static void downloadPost(Context context,  UserSession userSession, Object mediaObject, int position) {
+        downloadPost(context, userSession, mediaObject, position, false);
+    }
+
+    /**
+     * Long press of a download button. With direct download on a tap saves right away, so holding
+     * opens the chooser instead: the media picker of a carousel. Without direct download a tap already
+     * offers the chooser, so the hold does nothing.
+     */
+    public static void downloadPostChooser(
+            Context context, UserSession userSession, Object mediaObject, int position) {
+        if (!Settings.directDownload()) return;
+        downloadPost(context, userSession, mediaObject, position, true);
+    }
+
+    private static void downloadPost(
+            Context context, UserSession userSession, Object mediaObject, int position, boolean chooser) {
         try {
-            boolean ENABLE_DIRECT_DOWNLOAD = Settings.directDownload();
+            boolean ENABLE_DIRECT_DOWNLOAD = !chooser && Settings.directDownload();
             position = position < 1 ? 0 : position;
             MediaData mediaInfo = new MediaData(mediaObject, userSession);
             if (ENABLE_DIRECT_DOWNLOAD || mediaInfo.getCarouselSize() <= 1) {
@@ -375,6 +391,10 @@ public class DownloadUtils {
             }
             button.setOnClickListener(
                     v -> downloadPost(context, userSession, media, currentMediaIndex(rowState)));
+            button.setOnLongClickListener(v -> {
+                downloadPostChooser(context, userSession, media, currentMediaIndex(rowState));
+                return true;
+            });
         } catch (Exception e) {
             InstagramLogger.printException(() -> "addFeedDownloadButton failure", e);
         }
@@ -485,7 +505,11 @@ public class DownloadUtils {
                 button = createStoryDownloadButton(context, row);
                 if (button == null) return;
             }
-            button.setOnClickListener(v -> downloadStory(v, userSession, media));
+            button.setOnClickListener(v -> downloadStory(v, userSession, media, false));
+            button.setOnLongClickListener(v -> {
+                if (Settings.directDownload()) downloadStory(v, userSession, media, true);
+                return true;
+            });
         } catch (Exception e) {
             InstagramLogger.printException(() -> "addStoryDownloadButton failure", e);
         }
@@ -494,13 +518,13 @@ public class DownloadUtils {
     /**
      * A photo story downloads straight away. A video story offers the video or its cover frame as a
      * photo (a story is flattened with its text and stickers either way), unless direct download is on,
-     * which keeps the video.
+     * which keeps the video. Holding the button ([chooser]) offers the choice even then.
      */
-    private static void downloadStory(View anchor, UserSession userSession, Object media) {
+    private static void downloadStory(View anchor, UserSession userSession, Object media, boolean chooser) {
         Context context = anchor.getContext();
         try {
             MediaData storyInfo = new MediaData(media, userSession);
-            boolean directDownload = Settings.directDownload();
+            boolean directDownload = !chooser && Settings.directDownload();
             boolean video = storyInfo.isVideo();
             InstagramLogger.printInfo(() -> "story download video=" + video + " direct=" + directDownload
                     + " ctx=" + context.getClass().getName());

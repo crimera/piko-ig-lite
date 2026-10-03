@@ -135,30 +135,27 @@ public final class ReelDownload {
     }
 
     /**
-     * The long press of the copy does nothing, but still consumes the press: the original handler returns
-     * `true`, so the press does not fall through to the reel's own long press.
+     * The long press of the copy never reaches the save button's own (it would open the collections
+     * sheet): the press is consumed by returning `true`, like the original handler. With direct download on
+     * it opens the download chooser.
      */
     public static Function1<Object, Object> longClick(Function1<Object, Object> original) {
-        return CURRENT.get() == null ? original : IGNORE_LONG_PRESS;
+        Copy copy = CURRENT.get();
+        if (copy == null) return original;
+        return new DownloadLongClick(copy.context, copy.userSession, copy.media);
     }
 
-    /** A named class, not a lambda: the extension build does not desugar a lambda into a Kotlin `Function1`. */
-    private static final class IgnoreLongPress implements Function1<Object, Object> {
-        @Override
-        public Object invoke(Object ignored) {
-            return Boolean.TRUE;
-        }
-    }
-
-    private static final Function1<Object, Object> IGNORE_LONG_PRESS = new IgnoreLongPress();
-
-    private static void download(Context context, UserSession userSession, Object media) {
+    private static void download(Context context, UserSession userSession, Object media, boolean chooser) {
         try {
             if (context == null) throw new IllegalStateException("Reel download has no context");
             if (userSession == null) throw new IllegalStateException("Reel download has no user session");
             if (media == null) throw new IllegalStateException("Reel download has no media");
             InstagramLogger.printInfo(() -> "reel download ctx=" + context.getClass().getName());
-            DownloadUtils.downloadPost(context, userSession, media, 0);
+            if (chooser) {
+                DownloadUtils.downloadPostChooser(context, userSession, media, 0);
+            } else {
+                DownloadUtils.downloadPost(context, userSession, media, 0);
+            }
         } catch (Exception e) {
             InstagramLogger.printException(() -> "Error at reel download", e);
             Utils.showToastShort(e.getMessage());
@@ -178,8 +175,27 @@ public final class ReelDownload {
 
         @Override
         public Object invoke(Object ignored) {
-            download(context, userSession, media);
+            download(context, userSession, media, false);
             return Unit.INSTANCE;
+        }
+    }
+
+    /** A named class, not a lambda: the extension build does not desugar a lambda into a Kotlin `Function1`. */
+    private static final class DownloadLongClick implements Function1<Object, Object> {
+        private final Context context;
+        private final UserSession userSession;
+        private final Object media;
+
+        DownloadLongClick(Context context, UserSession userSession, Object media) {
+            this.context = context;
+            this.userSession = userSession;
+            this.media = media;
+        }
+
+        @Override
+        public Object invoke(Object ignored) {
+            download(context, userSession, media, true);
+            return Boolean.TRUE;
         }
     }
 

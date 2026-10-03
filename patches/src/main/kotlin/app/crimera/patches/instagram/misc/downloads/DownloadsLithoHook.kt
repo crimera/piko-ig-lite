@@ -42,6 +42,8 @@ private const val CLICK_HANDLER_DESCRIPTOR =
     "Lapp/morphe/extension/instagram/patches/download/FeedDownloadClickFunction;"
 private const val CLICK_HANDLER_CONSTRUCTOR =
     "$CLICK_HANDLER_DESCRIPTOR-><init>($CONTEXT_DESCRIPTOR$USER_SESSION_DESCRIPTOR$OBJECT_DESCRIPTOR)V"
+private const val LONG_CLICK_FACTORY =
+    "$CLICK_HANDLER_DESCRIPTOR->longClick($FUNCTION1_DESCRIPTOR)$FUNCTION1_DESCRIPTOR"
 private const val FEED_DOWNLOAD_ENABLED = "$DOWNLOAD_UTILS_DESCRIPTOR->isFeedDownloadButtonEnabled()Z"
 
 private val MOVE_OPCODES =
@@ -154,6 +156,19 @@ internal fun injectLithoDownloadButton(
                 reference.parameterTypes.map { it.toString() } == listOf(nodeType, FUNCTION1_DESCRIPTOR)
         }
     val onClickSetter = staticCallAt(onClickIndex, "ON_CLICK setter")
+
+    // The long press setter sits beside the tap setter: same owner and signature, told apart by the
+    // view property it sets. The builder never sets one on the save icon, so it is not called there.
+    val longClickSetter =
+        requireExactlyOne(
+            "ON_LONG_CLICK setter beside $onClickSetter",
+            patchContext.classDefBy(onClickSetter.definingClass).methods.filter { method ->
+                AccessFlags.STATIC.isSet(method.accessFlags) &&
+                    method.returnType == onClickSetter.returnType &&
+                    method.parameterTypes.map { it.toString() } == onClickSetter.parameterTypes.map { it.toString() } &&
+                    setsViewProperty(method, ON_LONG_CLICK_PROPERTY)
+            },
+        )
 
     // The content description is set two instructions before the button view class is loaded. The
     // node passed to ON_CLICK has no click props yet, so the download node does not inherit them.
@@ -322,6 +337,15 @@ internal fun injectLithoDownloadButton(
         move(first, node, nodeType)
         move(second, handler, FUNCTION1_DESCRIPTOR)
         invokeStatic(onClickSetter, first, second)
+        moveResult(node, nodeType)
+
+        // Holding the button offers the chooser; the handler is derived from the tap handler.
+        move(first, handler, FUNCTION1_DESCRIPTOR)
+        invokeStatic(methodReference(LONG_CLICK_FACTORY), first)
+        moveResult(flag, FUNCTION1_DESCRIPTOR)
+        move(first, node, nodeType)
+        move(second, flag, FUNCTION1_DESCRIPTOR)
+        invokeStatic(longClickSetter, first, second)
         moveResult(node, nodeType)
 
         sget(scaleType, fieldReference(CENTER_SCALE_TYPE))
