@@ -22,6 +22,7 @@ import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.patch.BytecodePatchContext
 import app.morphe.patcher.patch.PatchException
+import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.util.getReference
 import app.morphe.util.indexOfFirstInstruction
 import com.android.tools.smali.dexlib2.AccessFlags
@@ -53,6 +54,13 @@ private val VIDEO_VERSION_INTERFACES =
 private const val NONE = "none"
 private const val VALUE = 0
 private const val ARGUMENT = 1
+
+val mediaBridgesPatch =
+    bytecodePatch(
+        description = "Fills the media bridge stubs with direct reads of the release's Media model",
+    ) {
+        execute { injectMediaBridges() }
+    }
 
 /**
  * Replaces the placeholder bodies of `MediaBridge` with direct calls into the release's `Media`

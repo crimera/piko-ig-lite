@@ -13,10 +13,7 @@ import app.crimera.patches.common.requireExactlyOne
 import app.crimera.patches.instagram.entity.decoder.CURRENT_MEDIA_FIELD
 import app.crimera.patches.instagram.entity.decoder.MEDIA_ADD_INFO_CLASS_NAME
 import app.crimera.patches.instagram.entity.decoder.decoderEntity
-import app.crimera.patches.instagram.entity.mediadata.mediaDataEntity
-import app.crimera.patches.instagram.entity.originalSoundDataIntf.originalSoundDataIntfEntity
-import app.crimera.patches.instagram.entity.trackDataIntf.trackDataIntfEntity
-import app.crimera.patches.instagram.entity.videoData.videoDataEntity
+import app.crimera.patches.instagram.entity.mediadata.mediaBridgesPatch
 import app.crimera.patches.instagram.misc.extension.sharedExtensionPatch
 import app.crimera.patches.instagram.misc.settings.Categories
 import app.crimera.patches.instagram.misc.settings.instagramToggle
@@ -150,10 +147,7 @@ val downloadsPatch =
             storyDownloadPatch,
             reelDownloadPatch,
             sharedExtensionPatch,
-            mediaDataEntity,
-            videoDataEntity,
-            originalSoundDataIntfEntity,
-            trackDataIntfEntity,
+            mediaBridgesPatch,
             decoderEntity,
             resourceMappingPatch,
             // Download folder selection runs through the shared FolderPickerActivity, which has

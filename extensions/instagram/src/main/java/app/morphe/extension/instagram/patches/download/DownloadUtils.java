@@ -29,9 +29,6 @@ import java.util.Collections;
 import app.morphe.extension.instagram.settings.Settings;
 import app.morphe.extension.instagram.entity.MediaData;
 import app.morphe.extension.instagram.entity.ImageData;
-import app.morphe.extension.instagram.entity.UserData;
-import app.morphe.extension.instagram.entity.VideoData;
-import app.morphe.extension.instagram.entity.AudioMediaInterface;
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.instagram.utils.InstagramLogger;
 import app.morphe.extension.shared.ResourceType;
@@ -44,7 +41,6 @@ import app.morphe.extension.crimera.downloader.MediaType;
 import com.instagram.common.session.UserSession;
 
 public class DownloadUtils {
-    private static final String DEFAULT_AUDIO_FOLDER = "Audio";
     private static final String DRAWABLE_DOWNLOAD_ICON = "instagram_download_outline_24";
 
     public static String getSubfolderName(String username){
@@ -91,7 +87,7 @@ public class DownloadUtils {
         try {
             boolean ENABLE_DIRECT_DOWNLOAD = !chooser && Settings.directDownload();
             position = position < 1 ? 0 : position;
-            MediaData mediaInfo = new MediaData(mediaObject, userSession);
+            MediaData mediaInfo = new MediaData(mediaObject);
             if (ENABLE_DIRECT_DOWNLOAD || mediaInfo.getCarouselSize() <= 1) {
                 downloadMedia(context, mediaInfo, position, MediaType.ANY);
             } else {
@@ -309,13 +305,7 @@ public class DownloadUtils {
         String username = feedDownloadUsername(mediaInfo);
         String subFolder = getSubfolderName(username);
 
-        if (mediaType.equals(MediaType.AUDIO)) {
-            AudioMediaInterface audioMedia = mediaInfo.getMediaAt(position).getAudioMedia();
-            String audioUrl = audioMedia.getAudioUrl();
-            String fileName = audioMedia.getDownloadName() + ".mp3";
-            downloader.enqueue(new DownloadRequest(audioUrl, DEFAULT_AUDIO_FOLDER, fileName));
-
-        } else if (position != -1) {
+        if (position != -1) {
             MediaData mediaData = mediaInfo.getMediaAt(position);
             String mediaUrl;
             if (mediaType.equals(MediaType.IMAGE)) {
@@ -523,7 +513,7 @@ public class DownloadUtils {
     private static void downloadStory(View anchor, UserSession userSession, Object media, boolean chooser) {
         Context context = anchor.getContext();
         try {
-            MediaData storyInfo = new MediaData(media, userSession);
+            MediaData storyInfo = new MediaData(media);
             boolean directDownload = !chooser && Settings.directDownload();
             boolean video = storyInfo.isVideo();
             InstagramLogger.printInfo(() -> "story download video=" + video + " direct=" + directDownload

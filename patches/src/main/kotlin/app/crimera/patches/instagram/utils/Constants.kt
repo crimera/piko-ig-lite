@@ -40,8 +40,6 @@ object Constants {
 
     // Instagram classes.
     const val EDIT_MEDIA_INFO_FRAGMENT_CLASS = "Linstagram/features/creation/fragment/EditMediaInfoFragment;"
-    const val USER_SESSION_CLASS = "Lcom/instagram/common/session/UserSession;"
-    const val ORIGINAL_SOUND_DATA_INTF = "Lcom/instagram/api/schemas/OriginalSoundDataIntf;"
 
     // Extension classes.
     const val INTEGRATIONS_PACKAGE = "Lapp/morphe/extension/instagram"
