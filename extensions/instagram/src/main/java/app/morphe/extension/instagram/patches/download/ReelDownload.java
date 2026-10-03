@@ -39,8 +39,8 @@ import kotlin.jvm.functions.Function1;
  * save button renders exactly as before.
  *
  * <p>The copy keeps the save button's size, spacing, tint and layout. What the hooks swap is its icon,
- * its tap handler, its selected state and its id. Its long press stays the save button's, and the
- * impression callback must stay untouched: it runs whenever a reel is shown.
+ * its tap and long press handlers, its selected state and its id. The impression callback must stay
+ * untouched: it runs whenever a reel is shown.
  */
 public final class ReelDownload {
     /**
@@ -136,6 +136,24 @@ public final class ReelDownload {
         if (copy == null) return original;
         return new DownloadClick(copy.context, copy.userSession, copy.media);
     }
+
+    /**
+     * The long press of the copy does nothing, but still consumes the press: the original handler returns
+     * `true`, so the press does not fall through to the reel's own long press.
+     */
+    public static Function1<Object, Object> longClick(Function1<Object, Object> original) {
+        return CURRENT.get() == null ? original : IGNORE_LONG_PRESS;
+    }
+
+    /** A named class, not a lambda: the extension build does not desugar a lambda into a Kotlin `Function1`. */
+    private static final class IgnoreLongPress implements Function1<Object, Object> {
+        @Override
+        public Object invoke(Object ignored) {
+            return Boolean.TRUE;
+        }
+    }
+
+    private static final Function1<Object, Object> IGNORE_LONG_PRESS = new IgnoreLongPress();
 
     private static void download(Context context, UserSession userSession, Object media) {
         try {

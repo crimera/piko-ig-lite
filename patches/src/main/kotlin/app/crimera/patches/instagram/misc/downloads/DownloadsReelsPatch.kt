@@ -44,8 +44,9 @@ private const val CHAR_SEQUENCE_DESCRIPTOR = "Ljava/lang/CharSequence;"
 private const val FUNCTION1_DESCRIPTOR = "Lkotlin/jvm/functions/Function1;"
 private const val MEDIA_DESCRIPTOR = "Lcom/instagram/feed/media/Media;"
 
-/** Name of the view property a tap handler is stored under. */
+/** Names of the view properties the tap and long press handlers are stored under. */
 private const val ON_CLICK_PROPERTY = "ON_CLICK"
+private const val ON_LONG_CLICK_PROPERTY = "ON_LONG_CLICK"
 
 /** The reels save button: its component sets this id and tag on its icon. */
 private const val REEL_SAVE_BUTTON_ID = "save_button"
@@ -59,6 +60,7 @@ private const val DESCRIPTION =
     "$REEL_DOWNLOAD_DESCRIPTOR->description($CHAR_SEQUENCE_DESCRIPTOR)$CHAR_SEQUENCE_DESCRIPTOR"
 private const val VIEW_ID = "$REEL_DOWNLOAD_DESCRIPTOR->viewId(I)I"
 private const val CLICK = "$REEL_DOWNLOAD_DESCRIPTOR->click($FUNCTION1_DESCRIPTOR)$FUNCTION1_DESCRIPTOR"
+private const val LONG_CLICK = "$REEL_DOWNLOAD_DESCRIPTOR->longClick($FUNCTION1_DESCRIPTOR)$FUNCTION1_DESCRIPTOR"
 
 private val STATIC_INVOKE_OPCODES = setOf(Opcode.INVOKE_STATIC, Opcode.INVOKE_STATIC_RANGE)
 
@@ -77,8 +79,9 @@ private fun Opcode.withoutRange(): Opcode =
  * are separate components, and views added by hand are rejected. The save button component (the
  * `ClipsSaveButtonComponent`) is therefore built a second time, right before the real one, and
  * registered with the extension. The hooks in its render method change only registered copies: the
- * icon, the tap handler, the selected state and the view id. The other handlers the render method sets
- * (long press, impression logging) are left alone: the impression one fires whenever a reel is shown.
+ * icon, the tap and long press handlers, the selected state and the view id. The other handlers the
+ * render method sets (impression logging) are left alone: the impression one fires whenever a reel is
+ * shown.
  *
  * Every obfuscated member is resolved by behavior:
  *  - the component is the one render method that sets the `save_button` id and tag,
@@ -436,9 +439,16 @@ private fun hookSaveRender(
             modifierSetter(reference, FUNCTION1_DESCRIPTOR) && setsViewProperty(reference, ON_CLICK_PROPERTY)
         }
     // The tap handler is set once on the icon's modifier chain, and once more in the layout that wraps
-    // its handlers.
+    // its handlers. The long press handler is set the same way.
     if (clickSetters.size != 2) {
         throw PatchException("Expected two tap handler setters in $render, found ${clickSetters.size}: $clickSetters")
+    }
+    val longClickSetters =
+        staticCalls { reference ->
+            modifierSetter(reference, FUNCTION1_DESCRIPTOR) && setsViewProperty(reference, ON_LONG_CLICK_PROPERTY)
+        }
+    if (longClickSetters.size != 2) {
+        throw PatchException("Expected two long press handler setters in $render, found ${longClickSetters.size}: $longClickSetters")
     }
     val idSetters = staticCalls { modifierSetter(it, "I") }
     if (idSetters.size != 2) {
@@ -490,6 +500,13 @@ private fun hookSaveRender(
         hooks +=
             Hook(index) {
                 replaceValue(CLICK, handlerRegister, FUNCTION1_DESCRIPTOR)
+            }
+    }
+    longClickSetters.forEach { index ->
+        val handlerRegister = instructions[index].registers()[1]
+        hooks +=
+            Hook(index) {
+                replaceValue(LONG_CLICK, handlerRegister, FUNCTION1_DESCRIPTOR)
             }
     }
     idSetters.forEach { index ->
