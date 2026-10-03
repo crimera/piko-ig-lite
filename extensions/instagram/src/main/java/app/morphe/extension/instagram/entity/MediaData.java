@@ -112,11 +112,13 @@ public class MediaData extends Entity {
     }
 
     public String getMediaPkId() throws Exception {
-        return (String) super.getMethod("methodName");
+        String mediaPkId = MediaBridge.mediaPkId(this.obj);
+        if (mediaPkId == null) throw new IllegalStateException("The media has no id");
+        return mediaPkId;
     }
 
     public boolean isVideo() throws Exception {
-        return (boolean) super.getMethod(this.obj, "methodName");
+        return MediaBridge.isVideo(this.obj);
     }
 
     public boolean hasAudio() throws Exception {
@@ -190,7 +192,7 @@ public class MediaData extends Entity {
     }
 
     public List<Object> getMediaList() throws Exception {
-        List mediaList = (List) super.getMethod(this.getExtendedData(), "methodName");
+        List mediaList = MediaBridge.carouselMedia(this.obj);
         if (mediaList != null) {
             return mediaList;
         }
@@ -212,58 +214,38 @@ public class MediaData extends Entity {
         return super.getField(this.getExtendedData(), "fieldName");
     }
 
-    private List getVideoVariantsV1() throws Exception {
-        Object variantObject = super.getMethod(this.getExtendedData(), "methodName");
-        if (variantObject != null){
-            List variantList = (List) variantObject;
+    public List<VideoData> getVideoVariants() throws Exception {
+        List<?> variants = MediaBridge.videoVersions(this.obj);
+        if (variants == null) return null;
 
-            List<VideoData> videoList = new ArrayList<>();
-            variantList.forEach(item -> videoList.add(new VideoData(item)));
-            return videoList;
-
-        }
-        return null;
-    }
-
-    private List getVideoVariantsV2() throws Exception {
-        List variantList = (List) super.getField(this.getMoreExtendedData(), "fieldName");
-
-        List<VideoData> videoList = new ArrayList<>();
-        variantList.forEach(item -> videoList.add(new VideoData(item)));
+        List<VideoData> videoList = new ArrayList<>(variants.size());
+        for (Object item : variants) videoList.add(new VideoData(item));
         return videoList;
     }
 
-    public List getVideoVariants() throws Exception {
-        try {
-            return this.getVideoVariantsV2();
-        } catch (Exception e) {
-            return this.getVideoVariantsV1();
-        }
-    }
+    public List<ImageData> getImageVariants() throws Exception {
+        List<?> variants = MediaBridge.imageVariants(this.obj);
+        if (variants == null) return new ArrayList<>();
 
-    public List getImageVariants() throws Exception {
-        Object imageInfoObject = (Object) super.getField(this.getMoreExtendedData(), "fieldName");
-        List variantList = (List) super.getMethod(imageInfoObject, "methodName");
-
-        List<ImageData> imageList = new ArrayList<>();
-        variantList.forEach(item -> imageList.add(new ImageData(item)));
+        List<ImageData> imageList = new ArrayList<>(variants.size());
+        for (Object item : variants) imageList.add(new ImageData(item));
         return imageList;
     }
 
     public String getVideoLink() throws Exception {
         List<VideoData> videoDataList = this.getVideoVariants();
-        if(videoDataList!=null){
-            return videoDataList.get(0).getUrl();
+        if (videoDataList == null || videoDataList.isEmpty()) {
+            throw new IllegalStateException("The media has no video versions");
         }
-        return null;
+        return videoDataList.get(0).getUrl();
     }
-    
+
     public String getImageLink() throws Exception {
         List<ImageData> imageDataList = this.getImageVariants();
-        if(imageDataList!=null){
-            return imageDataList.get(0).getUrl();
+        if (imageDataList.isEmpty()) {
+            throw new IllegalStateException("The media has no image versions");
         }
-        return null;
+        return imageDataList.get(0).getUrl();
     }
 
 

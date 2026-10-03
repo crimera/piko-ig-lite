@@ -74,7 +74,7 @@ public class VideoData extends Entity implements MediaInterface {
     }
 
     public String getUrl() throws Exception {
-        return (String) super.getMethod("getUrl");
+        return MediaBridge.videoUrl(this.obj);
     }
 
     public MediaType getMediaType(){

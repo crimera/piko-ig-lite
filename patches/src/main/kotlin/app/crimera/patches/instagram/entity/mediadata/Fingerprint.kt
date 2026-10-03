@@ -31,31 +31,6 @@ internal object GetMentionSetExtensionFingerprint : Fingerprint(
     name = "getMentionSet",
 )
 
-internal object GetImageVariantsExtensionFingerprint : Fingerprint(
-    definingClass = EXTENSION_CLASS_DESCRIPTOR,
-    name = "getImageVariants",
-)
-
-internal object GetVideoVariantsV1ExtensionFingerprint : Fingerprint(
-    definingClass = EXTENSION_CLASS_DESCRIPTOR,
-    name = "getVideoVariantsV1",
-)
-
-internal object GetVideoVariantsV2ExtensionFingerprint : Fingerprint(
-    definingClass = EXTENSION_CLASS_DESCRIPTOR,
-    name = "getVideoVariantsV2",
-)
-
-internal object IsVideoExtensionFingerprint : Fingerprint(
-    definingClass = EXTENSION_CLASS_DESCRIPTOR,
-    name = "isVideo",
-)
-
-internal object GetMediaListExtensionFingerprint : Fingerprint(
-    definingClass = EXTENSION_CLASS_DESCRIPTOR,
-    name = "getMediaList",
-)
-
 internal object GetExtendedDataExtensionFingerprint : Fingerprint(
     definingClass = EXTENSION_CLASS_DESCRIPTOR,
     name = "getExtendedData",
@@ -69,11 +44,6 @@ internal object GetUserDataWithoutUserSessionExtensionFingerprint : Fingerprint(
 internal object GetUserDataWithUserSessionExtensionFingerprint : Fingerprint(
     definingClass = EXTENSION_CLASS_DESCRIPTOR,
     name = "getUserDataWithUserSession",
-)
-
-internal object GetMediaPkIdExtensionFingerprint : Fingerprint(
-    definingClass = EXTENSION_CLASS_DESCRIPTOR,
-    name = "getMediaPkId",
 )
 
 internal object GetDescriptionTextExtensionFingerprint : Fingerprint(
@@ -111,11 +81,6 @@ internal object GetPostTypeExtensionFingerprint : Fingerprint(
 internal object InstagramMainActivityNotificationRelatedFingerprint : Fingerprint(
     definingClass = "/InstagramMainActivity;",
     strings = listOf("nme_ig_post_post_creation_notif", "nme_ig_post_story_creation_notif"),
-)
-
-internal object VideoMediaInIGTVFeedHasVideoVariantsFingerprint : Fingerprint(
-    returnType = "Z",
-    strings = listOf("id: ", " type: ", "InvalidVideoMediaInIGTVFeed"),
 )
 
 internal object AslSessionRelatedFingerprint : Fingerprint(
@@ -183,15 +148,6 @@ internal object LiveTreeMediaDictGetUserFingerprint : Fingerprint(
     returnType = USER_MODEL_CLASS_NAME,
     strings = listOf("user"),
     definingClass = LIVE_TREE_MEDIA_DICT_CLASS,
-)
-
-internal object ExtMediaDictImageInfoMapperFingerprint : Fingerprint(
-    strings =
-        listOf(
-            "igtv_shopping_info",
-            "image_versions2",
-        ),
-    returnType = "Ljava/util/Map;",
 )
 
 internal object GetProductTileMediaFromUserSessionFingerprint : Fingerprint(

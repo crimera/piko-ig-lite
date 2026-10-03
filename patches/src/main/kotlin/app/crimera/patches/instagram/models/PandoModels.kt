@@ -8,6 +8,7 @@ package app.crimera.patches.instagram.models
 
 import app.crimera.bytecode.Block
 import app.crimera.bytecode.Target
+import app.crimera.patches.common.isAssignableTo
 import app.crimera.patches.common.requireAtMostOne
 import app.crimera.patches.common.requireExactlyOne
 import app.crimera.patches.common.resolveIntegerLiteralOnCurrentPath
@@ -69,28 +70,41 @@ internal data class ModelGetter(
     val ownerIsInterface: Boolean,
 )
 
+private data class ModelGetterKey(
+    val model: PandoModel,
+    val field: PandoField,
+    val returns: String?,
+)
+
 private object ModelGetterCache {
-    private val values = WeakHashMap<BytecodePatchContext, MutableMap<Pair<PandoModel, PandoField>, ModelGetter>>()
+    private val values = WeakHashMap<BytecodePatchContext, MutableMap<ModelGetterKey, ModelGetter>>()
 
     @Synchronized
     fun getOrPut(
         context: BytecodePatchContext,
-        key: Pair<PandoModel, PandoField>,
+        key: ModelGetterKey,
         resolve: () -> ModelGetter,
     ): ModelGetter = values.getOrPut(context) { mutableMapOf() }.getOrPut(key, resolve)
 }
 
-/** The [model] getter for [field], resolved once per patch context. */
+/**
+ * The [model] getter for [field], resolved once per patch context. A key is often spelled by several
+ * getters (a `carousel_media` check also sits in the count and flag getters), so [returns] narrows the
+ * candidates to the getters whose return type is assignable to that descriptor.
+ */
 context(context: BytecodePatchContext)
 internal fun resolvedModelGetter(
     model: PandoModel,
     field: PandoField,
-): ModelGetter = ModelGetterCache.getOrPut(context, model to field) { resolveModelGetter(model, field) }
+    returns: String? = null,
+): ModelGetter =
+    ModelGetterCache.getOrPut(context, ModelGetterKey(model, field, returns)) { resolveModelGetter(model, field, returns) }
 
 context(context: BytecodePatchContext)
 private fun resolveModelGetter(
     model: PandoModel,
     field: PandoField,
+    returns: String?,
 ): ModelGetter {
     val modelClass = context.classDefBy(model.descriptor)
     val dictField =
@@ -104,10 +118,12 @@ private fun resolveModelGetter(
     // Both shapes are searched, so a release that declares the getter on both owners fails instead
     // of silently preferring one.
     val candidates =
-        modelClass.lazyGetters(field).map { null to it } +
-            dictField?.let { dict -> context.classDefBy(dict.type).lazyGetters(field).map { dict to it } }.orEmpty()
+        (
+            modelClass.lazyGetters(field).map { null to it } +
+                dictField?.let { dict -> context.classDefBy(dict.type).lazyGetters(field).map { dict to it } }.orEmpty()
+        ).filter { (_, getter) -> returns == null || context.isAssignableTo(getter.returnType, returns) }
     val (dict, getter) =
-        requireExactlyOne("${model.descriptor} getter for $field", candidates) { (dict, getter) ->
+        requireExactlyOne("${model.descriptor} getter for $field returning ${returns ?: "any type"}", candidates) { (dict, getter) ->
             if (dict == null) getter.toString() else "$dict -> $getter"
         }
 
