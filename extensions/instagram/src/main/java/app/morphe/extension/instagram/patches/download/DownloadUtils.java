@@ -498,10 +498,68 @@ public class DownloadUtils {
                 button = createStoryDownloadButton(context, row);
                 if (button == null) return;
             }
-            button.setOnClickListener(v -> downloadPost(context, userSession, media, 0));
+            button.setOnClickListener(v -> downloadStory(v, userSession, media));
         } catch (Exception e) {
             InstagramLogger.printException(() -> "addStoryDownloadButton failure", e);
         }
+    }
+
+    /**
+     * A photo story downloads straight away. A video story offers the video or its cover frame as a
+     * photo (a story is flattened with its text and stickers either way), unless direct download is on,
+     * which keeps the video.
+     */
+    private static void downloadStory(View anchor, UserSession userSession, Object media) {
+        Context context = anchor.getContext();
+        try {
+            MediaData storyInfo = new MediaData(media, userSession);
+            boolean directDownload = Pref.enableDirectDownload() && SettingsStatus.downloadMedia;
+            boolean video = storyInfo.isVideo();
+            InstagramLogger.printInfo(() -> "story download video=" + video + " direct=" + directDownload
+                    + " ctx=" + context.getClass().getName());
+            if (!video || directDownload) {
+                downloadMedia(context, storyInfo, 0, MediaType.ANY);
+                return;
+            }
+            DownloadSheet.showStoryOptions(hostActivityOf(anchor), feedDownloadUsername(storyInfo), new DownloadSheet.StoryListener() {
+                @Override
+                public void onDownloadVideo() {
+                    downloadFromSheet(context, storyInfo, 0);
+                }
+
+                @Override
+                public void onDownloadPhoto() {
+                    try {
+                        downloadMedia(context, storyInfo, 0, MediaType.IMAGE);
+                    } catch (Exception e) {
+                        PikoUtils.logger(e);
+                        InstagramLogger.printException(() -> "Error at story photo download", e);
+                        Utils.showToastShort(e.getMessage());
+                    }
+                }
+            });
+        } catch (Exception e) {
+            PikoUtils.logger(e);
+            InstagramLogger.printException(() -> "Error at downloadStory", e);
+            Utils.showToastShort(e.getMessage());
+        }
+    }
+
+    /**
+     * The activity hosting a story row. The row is inflated with a themed wrapper around the application
+     * context, and the window's decor view uses a `DecorContext`, neither of which reaches an activity.
+     * The ancestors the activity itself inflated (such as the content frame) do, so the view tree is walked
+     * upwards until one is found. Throws when none is, so the failure is visible instead of silent.
+     */
+    private static Activity hostActivityOf(View view) {
+        View current = view;
+        while (current != null) {
+            Activity activity = DownloadSheet.findActivity(current.getContext());
+            if (activity != null) return activity;
+            ViewParent parent = current.getParent();
+            current = parent instanceof View ? (View) parent : null;
+        }
+        throw new IllegalStateException("No activity found above the story download button");
     }
 
     /** Sized and spaced like the like button, which is the first icon of the row. */

@@ -51,7 +51,54 @@ final class DownloadSheet {
         void onDownloadAll();
     }
 
+    interface StoryListener {
+        void onDownloadVideo();
+
+        void onDownloadPhoto();
+    }
+
     private DownloadSheet() {
+    }
+
+    /** Two rows for a video story: the video itself, or its cover frame saved as a photo. */
+    /** Throws when there is no usable activity to host the sheet, so a failure is never silent. */
+    static void showStoryOptions(Context context, String username, StoryListener listener) {
+        Activity activity = findActivity(context);
+        if (activity == null || activity.isFinishing() || activity.isDestroyed()) {
+            throw new IllegalStateException("No usable activity to host the story download sheet");
+        }
+
+        InstagramSheetTheme.install();
+        final BottomSheetView sheet = new BottomSheetView(activity);
+        sheet.setTitle(str("piko_download_sheet_title"));
+        sheet.setSubtitle(username != null && !username.trim().isEmpty()
+                ? str("piko_download_sheet_from", username.trim())
+                : str("piko_download_sheet_subtitle"));
+
+        final LinearLayout list = new LinearLayout(activity);
+        list.setOrientation(LinearLayout.VERTICAL);
+        list.addView(storyOptionRow(
+                activity, IconView.IconType.VIDEO, str("piko_download_story_video"), () -> {
+                    sheet.dismiss();
+                    listener.onDownloadVideo();
+                }));
+        list.addView(storyOptionRow(
+                activity, IconView.IconType.IMAGE, str("piko_download_story_photo"), () -> {
+                    sheet.dismiss();
+                    listener.onDownloadPhoto();
+                }));
+
+        sheet.setScrollableBodyView(list);
+        sheet.show();
+    }
+
+    private static ListItem storyOptionRow(
+            Activity activity, IconView.IconType icon, String title, Runnable onClick) {
+        ListItem row = new ListItem(activity);
+        row.setTitle(title);
+        row.setLeadingIcon(icon, PikoTheme.primaryAccent(activity), PikoTheme.surfaceVariant(activity));
+        row.setOnClickListener(v -> onClick.run());
+        return row;
     }
 
     static void show(Context context, List<DownloadItem> downloads, String username, Listener listener) {
@@ -244,7 +291,7 @@ final class DownloadSheet {
         if (!selected.remove(index)) selected.add(index);
     }
 
-    private static Activity findActivity(Context context) {
+    static Activity findActivity(Context context) {
         while (context instanceof ContextWrapper) {
             if (context instanceof Activity) return (Activity) context;
             context = ((ContextWrapper) context).getBaseContext();
