@@ -1,6 +1,6 @@
 # Repository Agent Rules
 
-The rules in `/Volumes/realme/Dev/AGENTS.md` (search safety, patch performance, build and dependency integrity) also apply here. Project skills live in `.agents/skills/`.
+Workspace-level rules (search safety, patch performance, build and dependency integrity) also apply when they are present. Project skills live in `.agents/skills/`.
 
 ## Device safety
 
