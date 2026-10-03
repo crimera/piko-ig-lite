@@ -141,12 +141,13 @@ val downloadsPatch =
     bytecodePatch(
         name = "Downloads",
         description =
-            "Adds a download button beside the save icon on feed posts and beside the reply pill on stories. " +
+            "Adds a download button beside the save icon on feed posts and reels and beside the reply pill on stories. " +
                 "Posts with several media open a bottom sheet to pick what to save.",
     ) {
         compatibleWith(COMPATIBILITY_INSTAGRAM)
         dependsOn(
             storyDownloadPatch,
+            reelDownloadPatch,
             sharedExtensionPatch,
             mediaDataEntity,
             videoDataEntity,

@@ -71,6 +71,7 @@ public class Settings {
     public static final BooleanSetting ENABLE_DOWNLOAD = new BooleanSetting("enable_download", true);
     public static final BooleanSetting FEED_DOWNLOAD_BUTTON = new BooleanSetting("feed_download_button", true);
     public static final BooleanSetting STORY_DOWNLOAD_BUTTON = new BooleanSetting("story_download_button", true);
+    public static final BooleanSetting REEL_DOWNLOAD_BUTTON = new BooleanSetting("reel_download_button", true);
     public static final BooleanSetting DOWNLOAD_SHEET_THUMBNAILS = new BooleanSetting("download_sheet_thumbnails", true);
     public static final BooleanSetting ENABLE_DIRECT_DOWNLOAD = new BooleanSetting("enable_direct_download", false);
     public static final BooleanSetting DOWNLOAD_USERNAME_FOLDER = new BooleanSetting("download_username_folder", false);
