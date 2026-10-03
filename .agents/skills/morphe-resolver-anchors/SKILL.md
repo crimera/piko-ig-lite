@@ -47,7 +47,7 @@ useful diagnostic.
 1. `./gradlew :patches:lintResolvers :patches:checkExtensionDescriptors` — mechanically detectable drift and
    stale extension descriptors.
 2. `./gradlew :patches:build --no-daemon` — real MPP.
-3. `./patch-ig.sh <new.apk>` and one older declared target; confirm `Applied` and
+3. `./patch-ig-cli.sh <new.apk>` and one older declared target; confirm `Applied` and
    `Saved to`.
 4. Inspect the emitted bytecode of the mutated method in the output APK (dexscope) before
    handing off.

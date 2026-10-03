@@ -222,12 +222,13 @@ Compose/recomposition warning: a visually nearby insertion may be skipped by loo
 ```bash
 ./gradlew :patches:build --no-daemon
 ./gradlew :patches:lintResolvers :patches:checkExtensionDescriptors --no-daemon
-OUTPUT_APK=/tmp/patch-test.apk ./patch-ig.sh apks/<version>.apk
+OUTPUT_APK=/tmp/patch-test.apk ./patch-ig-cli.sh apks/<version>.apk
 ```
 
-`patch-ig.sh` resolves the MPP from `gradle.properties`, signs with `Morphe.keystore`, and prints
-`Patched APK:`. Bare words are patch names (`-e`); `--exclusive` and other `--` flags pass through, so
-`./patch-ig.sh apks/<version>.apk "Downloads" --exclusive` patches only that bundle entry.
+`patch-ig-cli.sh` resolves the MPP from `gradle.properties`, runs the local `../morphe-patcher` CLI (build it once
+with `(cd ../morphe-patcher && ./gradlew :cli:installDist)`), signs with `Morphe.keystore`, and prints
+`Patched APK:`. Bare words are patch names (`-e`) and `--` flags pass through to the CLI, so
+`./patch-ig-cli.sh apks/<version>.apk "Downloads"` enables that patch by name.
 
 Default handoff:
 

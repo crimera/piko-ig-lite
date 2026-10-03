@@ -1,18 +1,17 @@
 #!/usr/bin/env bash
 # Patch Instagram with the piko-ig-lite bundle, using the local morphe-patcher CLI.
 #
-# Unlike patch-ig.sh this runs the morphe-patcher checkout in ../morphe-patcher
-# (`:cli:installDist`) instead of the shipped morphe-desktop release jar, so it picks up
-# local patcher changes. Build the runner once with:
+# This runs the morphe-patcher checkout in ../morphe-patcher (`:cli:installDist`) instead of
+# the shipped morphe-desktop release jar, so it picks up local patcher changes. Build the
+# runner once with:
 #
 #   (cd ../morphe-patcher && ./gradlew :cli:installDist)
 #
-# Output goes to OUTPUT_APK (default ~/Downloads/piko-ig-lite-patched-cli.apk) so it does
-# not clobber the release build written by patch-ig.sh. Patch failures print full stack
-# traces (--stacktrace) so resolver errors are actionable.
+# Output goes to OUTPUT_APK (default ~/Downloads/piko-ig-lite-patched-cli.apk). Patch failures
+# print full stack traces (--stacktrace) so resolver errors are actionable.
 #
-# Arguments mirror patch-ig.sh: a bare name enables a patch (-e), --flags pass through,
-# and an .apk/.apkm/.apks path replaces the default target.
+# Arguments: a bare name enables a patch (-e), --flags pass through, and an .apk/.apkm/.apks
+# path replaces the default target.
 set -euo pipefail
 
 ROOT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
@@ -71,7 +70,7 @@ echo "Local patcher CLI: $MORPHE_CLI_BIN"
 echo "Patch bundle: $MPP"
 
 # No --striplibs here: the local CLI does not implement architecture stripping yet, and the
-# target APK ships arm64-v8a only, so the release script's stripping is a no-op for it.
+# target APK ships arm64-v8a only, so stripping would be a no-op for it.
 JAVA_OPTS="-Xmx${PATCHER_MAX_HEAP_MB}m" "$MORPHE_CLI_BIN" patch \
   --patches "$MPP" \
   --keystore Morphe.keystore \
