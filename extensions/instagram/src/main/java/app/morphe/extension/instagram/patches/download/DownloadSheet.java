@@ -45,6 +45,9 @@ final class DownloadSheet {
     interface Listener {
         void onDownloadItem(int index);
 
+        /** A partial selection, in the order it was picked. */
+        void onDownloadItems(List<Integer> indexes);
+
         void onDownloadAll();
     }
 
@@ -138,7 +141,7 @@ final class DownloadSheet {
             if (!selecting[0] || selected.size() == total) {
                 listener.onDownloadAll();
             } else {
-                for (int index : new ArrayList<>(selected)) listener.onDownloadItem(index);
+                listener.onDownloadItems(new ArrayList<>(selected));
             }
         });
 

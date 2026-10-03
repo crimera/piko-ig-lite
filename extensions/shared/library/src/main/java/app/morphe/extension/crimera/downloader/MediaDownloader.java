@@ -25,6 +25,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -40,6 +41,22 @@ public class MediaDownloader {
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private boolean isDownloading = false;
+
+    /**
+     * Shared state of a multi-media download: its items stay quiet and the batch speaks once, when
+     * it starts, instead of every item announcing itself.
+     */
+    static final class Batch {
+        final int total;
+        int remaining;
+        int skipped;
+        boolean errorShown;
+
+        Batch(int total) {
+            this.total = total;
+            this.remaining = total;
+        }
+    }
 
     public MediaDownloader(Context context) {
         this.context = context;
@@ -60,6 +77,29 @@ public class MediaDownloader {
             return;
         }
         queue.add(request);
+        processNext();
+    }
+
+    /**
+     * Queues several downloads behind a single {@code announcement} toast. Storage access is checked
+     * once, and the items run in order on this downloader's thread.
+     */
+    public void enqueueAll(List<DownloadRequest> requests, String announcement) {
+        if (requests.isEmpty()) return;
+        if (requests.size() == 1) {
+            enqueue(requests.get(0));
+            return;
+        }
+        if (!StorageUtils.checkStoragePermissions()) {
+            StorageUtils.allowStorageAccess();
+            return;
+        }
+        Batch batch = new Batch(requests.size());
+        if (announcement != null) showToast(announcement);
+        for (DownloadRequest request : requests) {
+            request.batch = batch;
+            queue.add(request);
+        }
         processNext();
     }
 
@@ -93,7 +133,11 @@ public class MediaDownloader {
         try {
             Uri targetDirectoryUri = getTargetDirectoryUri(request);
             if (findChildDocument(targetDirectoryUri, request.fileName, null) != null) {
-                showToast(ExtensionStrings.DOWNLOAD_MEDIA_EXISTS);
+                if (request.batch == null) {
+                    showToast(ExtensionStrings.DOWNLOAD_MEDIA_EXISTS);
+                } else {
+                    request.batch.skipped++;
+                }
                 notificationManager.cancel(notificationId);
                 return;
             }
@@ -108,7 +152,7 @@ public class MediaDownloader {
                 throw new IOException("Could not create download file");
             }
 
-            showToast(downloadStartString);
+            if (request.batch == null) showToast(downloadStartString);
             HttpURLConnection conn = null;
             try {
                 URL url = new URL(request.url);
@@ -166,10 +210,6 @@ public class MediaDownloader {
                         .setProgress(0, 0, false); // Wipes the progress track bar layout away entirely
                 // Force post the update layout
                 notificationManager.notify(finalNotificationId, builder.build());
-
-                try {
-                    PikoUtils.toast(downloadCompletedString);
-                } catch (Exception ignored) {}
             });
         } catch (Exception e) {
             if (!downloadCompleted && outputDocumentUri != null) {
@@ -177,12 +217,27 @@ public class MediaDownloader {
                     DocumentsContract.deleteDocument(context.getContentResolver(), outputDocumentUri);
                 } catch (Exception ignored) {}
             }
-            showToast(ExtensionStrings.DOWNLOAD_ERROR + e.getMessage());
+            // A failing batch (offline, no space) reports once, not once per item.
+            if (request.batch == null || !request.batch.errorShown) {
+                if (request.batch != null) request.batch.errorShown = true;
+                showToast(ExtensionStrings.DOWNLOAD_ERROR + e.getMessage());
+            }
             notificationManager.cancel(notificationId);
             PikoUtils.logger(e);
         } finally {
+            finishBatchItem(request);
             isDownloading = false;
             processNext();
+        }
+    }
+
+    /** When every item of a batch already existed, say so once instead of staying silent. */
+    private void finishBatchItem(DownloadRequest request) {
+        Batch batch = request.batch;
+        if (batch == null) return;
+        batch.remaining--;
+        if (batch.remaining == 0 && batch.skipped == batch.total) {
+            showToast(ExtensionStrings.DOWNLOAD_MEDIA_EXISTS);
         }
     }
 

@@ -12,6 +12,9 @@ public class DownloadRequest {
     public String subFolder; 
     public String fileName;
 
+    /** Set when the request belongs to a multi-media download that reports through one toast. */
+    MediaDownloader.Batch batch;
+
     public DownloadRequest(String url, String subFolder, String fileName) {
         this.url = url;
         this.subFolder = subFolder;

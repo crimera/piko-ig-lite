@@ -127,6 +127,11 @@ public class DownloadUtils {
             }
 
             @Override
+            public void onDownloadItems(List<Integer> indexes) {
+                downloadFromSheet(context, mediaInfo, indexes);
+            }
+
+            @Override
             public void onDownloadAll() {
                 downloadFromSheet(context, mediaInfo, -1);
             }
@@ -246,6 +251,47 @@ public class DownloadUtils {
         }
     }
 
+    private static void downloadFromSheet(Context context, MediaData mediaInfo, List<Integer> indexes) {
+        try {
+            downloadMedia(context, mediaInfo, indexes);
+        } catch (Exception e) {
+            PikoUtils.logger(e);
+            InstagramLogger.printException(() -> "Error at downloadFromSheet", e);
+            Utils.showToastShort(e.getMessage());
+        }
+    }
+
+    /** Downloads the picked media of a carousel behind a single toast. */
+    private static void downloadMedia(Context context, MediaData mediaInfo, List<Integer> indexes) throws Exception {
+        if (indexes.size() == 1) {
+            downloadMedia(context, mediaInfo, indexes.get(0), MediaType.ANY);
+            return;
+        }
+        if (!Utils.isNetworkConnected()) {
+            Utils.showToastShort(str("piko_no_internet"));
+            return;
+        }
+        String username = feedDownloadUsername(mediaInfo);
+        String subFolder = getSubfolderName(username);
+        List<DownloadRequest> requests = new ArrayList<>(indexes.size());
+        for (int index : indexes) {
+            MediaData mediaData = mediaInfo.getMediaAt(index);
+            requests.add(new DownloadRequest(
+                    mediaData.getMediaLink(), subFolder, username + "_" + mediaData.getDownloadFilename(MediaType.ANY)));
+        }
+        enqueueBatch(context, mediaInfo, requests, username);
+    }
+
+    /** One announcement for the whole batch: how many media, and from whom when the author is known. */
+    private static void enqueueBatch(
+            Context context, MediaData mediaInfo, List<DownloadRequest> requests, String username) {
+        boolean knownAuthor = getMediaUsername(mediaInfo.getObject()) != null;
+        String announcement = knownAuthor
+                ? str("piko_downloading_media_from_user", requests.size(), username)
+                : str("piko_downloading_media_count", requests.size());
+        new MediaDownloader(context).enqueueAll(requests, announcement);
+    }
+
     // Position is set to -1 if we want to download all medias from the media info object.
     public static void downloadMedia(Context context, MediaData mediaInfo, int position, MediaType mediaType) throws Exception {
         if(!Utils.isNetworkConnected()){
@@ -277,11 +323,17 @@ public class DownloadUtils {
         } else if (position == -1) {
             int carouselSize = mediaInfo.getCarouselSize();
 
+            List<DownloadRequest> requests = new ArrayList<>(carouselSize);
             for (int index = 0; index < carouselSize; index++) {
                 MediaData currentMediaData = mediaInfo.getMediaAt(index);
                 String fileName = username+"_"+currentMediaData.getDownloadFilename(MediaType.ANY);
                 String mediaUrl = currentMediaData.getMediaLink();
-                downloader.enqueue(new DownloadRequest(mediaUrl, subFolder, fileName));
+                requests.add(new DownloadRequest(mediaUrl, subFolder, fileName));
+            }
+            if (requests.size() > 1) {
+                enqueueBatch(context, mediaInfo, requests, username);
+            } else {
+                for (DownloadRequest request : requests) downloader.enqueue(request);
             }
         } else {
             Utils.showToastShort("There is nothing to download");
