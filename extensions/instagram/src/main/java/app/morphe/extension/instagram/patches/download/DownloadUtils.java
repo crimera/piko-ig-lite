@@ -12,6 +12,7 @@ import static app.morphe.extension.instagram.utils.IgStr.str;
 import android.os.Build;
 import android.content.Context;
 import android.app.Activity;
+import android.graphics.Color;
 import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
@@ -414,6 +415,66 @@ public class DownloadUtils {
                 && typedValue.resourceId != 0) {
             button.setColorFilter(context.getColor(typedValue.resourceId));
         }
+    }
+
+    private static final Object STORY_DOWNLOAD_BUTTON_TAG = new Object();
+    private static final String STORY_LIKE_CONTAINER_ID = "toolbar_like_container";
+
+    public static boolean isStoryDownloadButtonEnabled() {
+        return Boolean.TRUE.equals(SharedPref.getBooleanPref(Settings.ENABLE_DOWNLOAD))
+                && Boolean.TRUE.equals(SharedPref.getBooleanPref(Settings.STORY_DOWNLOAD_BUTTON));
+    }
+
+    /**
+     * Adds a download button to the story icon row beside the reply pill; called from the patched
+     * toolbar binder on every story bind, so the button is reused and always points at the story
+     * currently shown. {@code media} is the story's `Media`, null for stories that carry none.
+     */
+    public static void addStoryDownloadButton(View buttonsContainer, Object media, UserSession userSession) {
+        try {
+            if (!(buttonsContainer instanceof ViewGroup)) return;
+            ViewGroup row = (ViewGroup) buttonsContainer;
+
+            ImageView button = row.findViewWithTag(STORY_DOWNLOAD_BUTTON_TAG);
+            if (media == null || !isStoryDownloadButtonEnabled()) {
+                if (button != null) row.removeView(button);
+                return;
+            }
+
+            Context context = row.getContext();
+            if (button == null) {
+                button = createStoryDownloadButton(context, row);
+                if (button == null) return;
+            }
+            button.setOnClickListener(v -> downloadPost(context, userSession, media, 0));
+        } catch (Exception e) {
+            InstagramLogger.printException(() -> "addStoryDownloadButton failure", e);
+        }
+    }
+
+    /** Sized and spaced like the like button, which is the first icon of the row. */
+    private static ImageView createStoryDownloadButton(Context context, ViewGroup row) {
+        int likeContainerId = ResourceUtils.getIdentifier(context, ResourceType.ID, STORY_LIKE_CONTAINER_ID);
+        View model = likeContainerId == 0 ? null : row.findViewById(likeContainerId);
+        if (model == null || model.getParent() != row) {
+            model = row.getChildCount() == 0 ? null : row.getChildAt(0);
+        }
+        if (model == null) return null;
+
+        int drawableId = ResourceUtils.getIdentifier(context, ResourceType.DRAWABLE, DRAWABLE_DOWNLOAD_ICON);
+        if (drawableId == 0) return null;
+
+        ImageView button = new ImageView(context);
+        button.setTag(STORY_DOWNLOAD_BUTTON_TAG);
+        button.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        button.setImageDrawable(context.getDrawable(drawableId));
+        // The story viewer is always dark, and its icons are white.
+        button.setColorFilter(Color.WHITE);
+        button.setContentDescription(str("piko_download_current_media"));
+        button.setPadding(
+                model.getPaddingLeft(), model.getPaddingTop(), model.getPaddingRight(), model.getPaddingBottom());
+        row.addView(button, row.indexOfChild(model), cloneLayoutParams(model));
+        return button;
     }
 
     public static void externalDownloader(Object mediaObject, int currentMediaIndex){

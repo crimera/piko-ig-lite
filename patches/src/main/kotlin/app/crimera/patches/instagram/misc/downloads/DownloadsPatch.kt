@@ -123,7 +123,7 @@ internal fun Instruction.registers(): List<Int> =
 
 /** The resolved bytecode method a fingerprint-free lookup returned, as the mutable copy to patch. */
 context(patchContext: BytecodePatchContext)
-private fun MethodReference.toMutable(label: String): MutableMethod =
+internal fun MethodReference.toMutable(label: String): MutableMethod =
     requireExactlyOne(
         label,
         patchContext.mutableClassDefBy(definingClass).methods.filter { it.sameSignatureAs(this) },
@@ -141,11 +141,12 @@ val downloadsPatch =
     bytecodePatch(
         name = "Downloads",
         description =
-            "Adds a download button beside the save icon on feed posts. " +
+            "Adds a download button beside the save icon on feed posts and beside the reply pill on stories. " +
                 "Posts with several media open a bottom sheet to pick what to save.",
     ) {
         compatibleWith(COMPATIBILITY_INSTAGRAM)
         dependsOn(
+            storyDownloadPatch,
             sharedExtensionPatch,
             mediaDataEntity,
             videoDataEntity,
