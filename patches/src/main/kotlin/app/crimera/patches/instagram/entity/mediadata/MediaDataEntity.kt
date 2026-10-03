@@ -25,6 +25,7 @@ import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.util.getReference
 import app.morphe.util.indexOfFirstInstruction
 import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.StringReference
 
@@ -260,10 +261,28 @@ val mediaDataEntity =
                     if (videoVersionsIndex < 0) {
                         throw PatchException("video_versions key not found in video info mapper")
                     }
+                    // The value is read right after the key and handed to a helper together with it, or on
+                    // newer releases copied into a list first and put under the key afterwards. So read
+                    // the field before the next call; otherwise take the nearest `List` field read before
+                    // the key.
+                    val mapperInstructions = instructions.toList()
+                    val fieldAfterKey =
+                        mapperInstructions
+                            .drop(videoVersionsIndex + 1)
+                            .takeWhile { it.opcode != Opcode.INVOKE_STATIC && it.opcode != Opcode.INVOKE_VIRTUAL }
+                            .firstOrNull { it.opcode == Opcode.IGET_OBJECT }
+                    // resolver-lint: allow instruction-order raw-last because the value list is read just before the key it is put under.
+                    val fieldBeforeKey =
+                        mapperInstructions
+                            .take(videoVersionsIndex)
+                            .lastOrNull { instruction ->
+                                instruction.opcode == Opcode.IGET_OBJECT &&
+                                    instruction.getReference<FieldReference>()?.type == "Ljava/util/List;"
+                            }
                     val videoVariantsListFieldName =
-                        getInstruction(
-                            indexOfFirstInstruction(videoVersionsIndex, Opcode.IGET_OBJECT),
-                        ).fieldExtractor().name
+                        (fieldAfterKey ?: fieldBeforeKey ?: throw PatchException("video_versions value field not found in video info mapper"))
+                            .fieldExtractor()
+                            .name
 
                     GetVideoVariantsV2ExtensionFingerprint.changeFirstString(videoVariantsListFieldName)
                 }
