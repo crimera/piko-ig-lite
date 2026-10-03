@@ -26,7 +26,9 @@ internal object UserTagInfoDictInitFingerprint : Fingerprint(
     name = "<init>",
 )
 
+// The Kotlin file facade of the media helpers. Its name is not obfuscated, unlike the log string it was
+// once found by, which 449 dropped.
 object ReelsInlineQualitySurveyRelatedFingerprint : Fingerprint(
-    strings = listOf("reels_inline_quality_survey"),
+    definingClass = "Lcom/instagram/feed/media/MediaExtKt;",
     parameters = listOf(MEDIA_CLASS_NAME),
 )

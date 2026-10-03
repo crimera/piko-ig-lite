@@ -31,6 +31,7 @@ import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.ClassDef
 import com.android.tools.smali.dexlib2.iface.Field
 import com.android.tools.smali.dexlib2.iface.Method
+import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.StringReference
@@ -322,19 +323,28 @@ private fun hookBuilderCallSites(
         val call = callerInstructions[site.index]
         val callRegisters = call.registers()
 
-        // The component goes into the list the original code adds it to right after the call; the
-        // first `add` after the call is the contract, so it is asserted to be the only one taken.
+        // The original code hands the built component to a collector right after the call: a plain
+        // `List.add` on 448, a null-checking wrapper around the list on 449. Whichever it is, the contract
+        // is the first call that takes the call's result: an instance method with that result as its only
+        // argument. It is asserted to be the only one taken.
+        val resultRegister =
+            (callerInstructions.getOrNull(site.index + 1) as? OneRegisterInstruction)
+                ?.takeIf { it.opcode == Opcode.MOVE_RESULT_OBJECT }
+                ?.registerA
+                ?: throw PatchException("The builder call at ${site.index} in $caller does not keep its result")
         val listAdd =
             callerInstructions
-                .drop(site.index + 1)
+                .drop(site.index + 2)
+                .filter { instruction -> instruction.methodRef() != null && resultRegister in instruction.registers() }
+                .take(1)
                 .filter { instruction ->
-                    instruction.methodRef()?.let { reference ->
-                        reference.name == "add" &&
-                            reference.returnType == "Z" &&
-                            reference.parameterTypes.map { it.toString() } == listOf(OBJECT_DESCRIPTOR)
-                    } == true
-                }.take(1)
-        val add = requireExactlyOne("list add after the builder call at ${site.index} in $caller", listAdd)
+                    instruction.registers().size == 2 &&
+                        instruction.opcode !in STATIC_INVOKE_OPCODES &&
+                        instruction.methodRef()?.let { reference ->
+                            reference.parameterTypes.size == 1 && (reference.returnType == "Z" || reference.returnType == "V")
+                        } == true
+                }
+        val add = requireExactlyOne("collector add after the builder call at ${site.index} in $caller", listAdd)
         val listRegister = add.registers().first()
 
         mutableCaller.insertHook(

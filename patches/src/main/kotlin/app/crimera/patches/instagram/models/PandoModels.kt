@@ -31,8 +31,9 @@ internal const val USER_DESCRIPTOR = "Lcom/instagram/user/model/User;"
 private const val LIVE_TREE_DESCRIPTOR = "Lcom/instagram/pando/livetree/LiveTreeJNI;"
 
 /**
- * A Pando-backed model and the LiveTree dict that older releases keep its getters on. 448 declares
- * the getters on the model itself; 439 declares them on the dict the model holds in a field.
+ * A Pando-backed model and the LiveTree dict that older releases keep its getters on. Current
+ * releases declare the getters on the model itself; older ones declare them on the dict the model holds
+ * in a field.
  */
 internal enum class PandoModel(
     val descriptor: String,

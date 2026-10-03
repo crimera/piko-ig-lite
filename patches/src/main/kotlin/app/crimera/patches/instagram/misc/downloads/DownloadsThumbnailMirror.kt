@@ -154,7 +154,7 @@ private fun resolveImageCacheKeyIdentityField(cacheKeyDescriptor: String): Field
 /**
  * The decode-and-add method is the one method carrying [DECODE_ANCHOR]; its cache interface owns
  * the matching abstract method, and every concrete method that invokes that interface method is a
- * facade whose return is hooked. On 448 there is one facade, on 439 two.
+ * facade whose return is hooked. A release has one or two facades.
  */
 context(patchContext: BytecodePatchContext)
 private fun resolveDecodeCapture(chain: CachedBitmapChain, identityField: FieldReference): DecodeCapture {
@@ -177,9 +177,6 @@ private fun resolveDecodeCapture(chain: CachedBitmapChain, identityField: FieldR
         throw PatchException("Bitmap field $chain.bitmapField is not on the decode result ${implementation.returnType}")
     }
     val implementationParameters = implementation.parameterTypes.map { it.toString() }
-    if ("[B" !in implementationParameters) {
-        throw PatchException("Decode method $implementation has no byte[] parameter")
-    }
 
     val interfaceClass =
         patchContext.classDefByOrNull(interfaceType)
@@ -283,8 +280,14 @@ private fun resolveFacade(
     val postParameters =
         parameters.withIndex().filter { (_, descriptor) -> descriptor == postprocessorType }.map { it.index }
     val postParameter = requireExactlyOne("postprocessor parameter of $facade", postParameters)
+    // The postprocessor is found by its type: 449 put another parameter in front of it in the decode method.
+    val decodePostIndex =
+        requireExactlyOne(
+            "postprocessor parameter of the decode method",
+            decodeParameters.withIndex().filter { (_, descriptor) -> descriptor == postprocessorType }.map { it.index },
+        )
     val postArgument =
-        callArgumentRegister(invoke, 1 + parameterWordOffset(decodeParameters, 1))
+        callArgumentRegister(invoke, 1 + parameterWordOffset(decodeParameters, decodePostIndex))
     val forwardedPost =
         traceArgumentToParameter(facade, instructions, decodeInvoke.index, postArgument)
     if (forwardedPost != postParameter) {

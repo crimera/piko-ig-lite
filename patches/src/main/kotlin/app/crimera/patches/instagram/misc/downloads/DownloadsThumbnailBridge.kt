@@ -26,6 +26,7 @@ import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
+import com.android.tools.smali.dexlib2.iface.reference.StringReference
 import com.android.tools.smali.dexlib2.iface.reference.TypeReference
 
 private const val STRING_DESCRIPTOR = "Ljava/lang/String;"
@@ -45,8 +46,8 @@ private const val SAVE_AS_STICKER_ANCHOR = "SaveAsStickerHelper"
 
 /**
  * Instagram's "URL string to cached bitmap" helper, the only cheap preview source in an app with
- * no Coil/Glide/Fresco. Obfuscated owners move between releases (`LX/0PoN` on 448, `LX/0VoK` on
- * 439), so the method is anchored by its log strings plus its public shape: static, one `String`,
+ * no Coil/Glide/Fresco. Obfuscated owners move between releases (`LX/0PoN` on 448, `LX/0jhc` on
+ * 449), so the method is anchored by its log strings plus its public shape: static, one `String`,
  * returns `Bitmap`. A cache miss returns null and never starts a load.
  */
 private val cachedBitmapLookupFingerprint =
@@ -70,7 +71,8 @@ internal sealed interface CacheSourceStep {
  * Value of one parameter at the cache lookup call, decoded from the resolved method's register
  * flow. [CacheKey] is the `ImageCacheKey` the bridge produces, [Constant] is a literal (0 = null
  * for reference parameters), [StringParameter] is the URL string that the original method received
- * and that the cache implementation requires to be non-null.
+ * and that the cache implementation requires to be non-null, [StringLiteral] is a string the original
+ * method passes as a constant.
  */
 internal sealed interface BjdArgument {
     object CacheKey : BjdArgument
@@ -78,6 +80,9 @@ internal sealed interface BjdArgument {
     class Constant(val value: Int) : BjdArgument
 
     class StringParameter(val descriptor: String) : BjdArgument
+
+    /** A string literal the original method passes, such as the caller tag 449 added to the lookup. */
+    class StringLiteral(val value: String) : BjdArgument
 }
 
 /** Every reference the object-driven bridge needs, all taken from the resolved lookup's bytecode. */
@@ -163,12 +168,13 @@ private fun resolveCachedBitmapChain(): CachedBitmapChain {
                 val reference = instruction.methodRef() ?: return@filter false
                 if (!isInterfaceInvoke(instruction.opcode)) return@filter false
                 val parameters = reference.parameterTypes.map(CharSequence::toString)
-                parameters.size == 5 &&
+                // The key, one or more reference slots, then the float and the int. 449 added a second
+                // string (a caller tag) to the reference slots.
+                parameters.size >= 5 &&
                     parameters[0] == cacheKeyDescriptor &&
-                    isReferenceDescriptor(parameters[1]) &&
-                    isReferenceDescriptor(parameters[2]) &&
-                    parameters[3] == FLOAT_DESCRIPTOR &&
-                    parameters[4] == INT_DESCRIPTOR &&
+                    parameters.subList(1, parameters.size - 2).all(::isReferenceDescriptor) &&
+                    parameters[parameters.size - 2] == FLOAT_DESCRIPTOR &&
+                    parameters[parameters.size - 1] == INT_DESCRIPTOR &&
                     patchContext.hasSingleBitmapField(reference.returnType.toString())
             },
         )
@@ -192,13 +198,14 @@ private fun resolveCachedBitmapChain(): CachedBitmapChain {
         resolveCacheSourceSteps(instructions, lookupInvokeIndex, lookupReceiver)
 
     val lookupRegisters = lookupInvoke.registers()
-    if (lookupRegisters.size != 6) {
+    val argumentCount = cacheLookup.parameterTypes.size
+    if (lookupRegisters.size != argumentCount + 1) {
         throw PatchException(
-            "Cache lookup invoke $cacheLookup must carry a receiver and five arguments in $lookup",
+            "Cache lookup invoke $cacheLookup must carry a receiver and $argumentCount arguments in $lookup",
         )
     }
     val bjdArguments =
-        (0 until 5).map { parameterIndex ->
+        (0 until argumentCount).map { parameterIndex ->
             resolveBjdArgument(
                 instructions,
                 lookupInvokeIndex,
@@ -240,9 +247,9 @@ private fun resolveCachedBitmapChain(): CachedBitmapChain {
 }
 
 /**
- * Walks the value producers of the cache receiver register back to the static root, so both the
- * 448 shape (`static singleton -> field`) and the 439 shape (`static factory -> interface call`)
- * resolve from the same code.
+ * Walks the value producers of the cache receiver register back to the static root, so the
+ * shape with a static singleton and a field read and the shape with a static factory and an interface
+ * call resolve from the same code.
  */
 private fun resolveCacheSourceSteps(
     instructions: List<Instruction>,
@@ -334,6 +341,9 @@ private fun resolveBjdArgument(
             Opcode.CONST_4, Opcode.CONST_16 ->
                 (instruction as? NarrowLiteralInstruction)?.let { BjdArgument.Constant(it.narrowLiteral) }
 
+            Opcode.CONST_STRING, Opcode.CONST_STRING_JUMBO ->
+                instruction.getReference<StringReference>()?.let { BjdArgument.StringLiteral(it.string) }
+
             Opcode.MOVE_OBJECT, Opcode.MOVE_OBJECT_FROM16, Opcode.MOVE_OBJECT_16 -> {
                 val source = (instruction as TwoRegisterInstruction).registerB
                 val wordOffset = source - lookup.parameterRegisterStart()
@@ -365,6 +375,8 @@ private val VALUE_PRODUCING_OPCODES =
         Opcode.CONST_16,
         Opcode.CONST,
         Opcode.CONST_HIGH16,
+        Opcode.CONST_STRING,
+        Opcode.CONST_STRING_JUMBO,
         Opcode.MOVE,
         Opcode.MOVE_FROM16,
         Opcode.MOVE_16,
@@ -411,6 +423,8 @@ private fun Block.emitBjdArgument(
             }
             move(slot, urlParameter, STRING_DESCRIPTOR)
         }
+
+        is BjdArgument.StringLiteral -> constString(slot, argument.value)
     }
 }
 
@@ -507,21 +521,18 @@ internal fun injectCachedBitmapLookup(): CachedBitmapChain {
         "cachedBitmap",
         listOf(OBJECT_DESCRIPTOR, STRING_DESCRIPTOR),
         BITMAP_DESCRIPTOR,
-        registers = 12,
+        registers = chain.bjdArguments.size + 7,
     ) {
-        // v0/v1: chain scratch, v2..v7: lookup receiver/arguments, v8..v9: result,
-        // v10: imageUrl parameter, v11: url parameter.
+        // v0/v1: chain scratch, v2: lookup receiver, v3: key, then one register per remaining lookup
+        // argument, then the result and the bitmap, then the imageUrl and url parameters.
         val chainFirst = 0
         val receiver = 2
         val key = 3
-        val lookupSecond = 4
-        val lookupString = 5
-        val lookupFloat = 6
-        val lookupInt = 7
-        val result = 8
-        val bitmap = 9
-        val imageUrl = 10
-        val url = 11
+        val lookupArguments = (1 until chain.bjdArguments.size).map { 3 + it }
+        val result = 4 + lookupArguments.size
+        val bitmap = result + 1
+        val imageUrl = bitmap + 1
+        val url = imageUrl + 1
 
         checkCast(imageUrl, chain.cacheKeyGetterOwner)
         invokeVirtual(methodReference(chain.cacheKeyGetter.toString()), imageUrl)
@@ -547,20 +558,17 @@ internal fun injectCachedBitmapLookup(): CachedBitmapChain {
         }
 
         // Each remaining argument is replayed from the resolved method's register flow: the
-        // `LX/02lW` slot stays null and BJD's String slot is the URL the cache requires.
-        emitBjdArgument(chain.bjdArguments[1], lookupSecond, url)
-        emitBjdArgument(chain.bjdArguments[2], lookupString, url)
-        emitBjdArgument(chain.bjdArguments[3], lookupFloat, url)
-        emitBjdArgument(chain.bjdArguments[4], lookupInt, url)
+        // postprocessor slot stays null, the String slot is the URL the cache requires, and a caller
+        // tag string is replayed as the literal the original method passes.
+        lookupArguments.forEachIndexed { index, slot ->
+            emitBjdArgument(chain.bjdArguments[index + 1], slot, url)
+        }
 
         invokeInterface(
             methodReference(chain.cacheLookup.toString()),
             receiver,
             key,
-            lookupSecond,
-            lookupString,
-            lookupFloat,
-            lookupInt,
+            *lookupArguments.toIntArray(),
         )
         moveResult(result, chain.cacheLookup.returnType.toString())
         ifEqz(result, Target.Local("none"))

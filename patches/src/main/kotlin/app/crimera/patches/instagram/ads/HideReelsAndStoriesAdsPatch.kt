@@ -37,9 +37,8 @@ private const val AD_POD_KEY = "Is ad pod"
  * so returning `false` at the top of it keeps the ad out without touching the viewer's own state. The
  * candidate stays pooled (the engine's own rejections drop it), which costs one cheap retry per attempt.
  *
- * The decision method is the only boolean method that writes the `Is ad pod` annotation. It is a private
- * instance method on 448 and a static method that also carries the attempt logging on 439, which is why
- * it is matched by that string and its return type rather than by its owner or its parameters.
+ * The decision method is the only boolean method that writes the `Is ad pod` annotation. Its owner and
+ * parameters move between releases, which is why it is matched by that string and its return type.
  */
 @Suppress("unused")
 val hideReelsAndStoriesAdsPatch =

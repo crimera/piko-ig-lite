@@ -122,7 +122,7 @@ the APK at patch time — class presence plus shape — not from the version str
   and order-contractual anchor scans carry directives explaining the contract.
 - Download sheet thumbnails ride emitted bridges resolved by the `SaveAsStickerHelper` /
   `Error getting bitmap from cache` log anchors plus the static `(String) -> Bitmap` shape
-  (`LX/0PoN.A00` on 448, `LX/0VoK.A00` on 439). `ThumbnailLoader.cachedBitmap(String)` keeps
+  (`LX/0PoN.A00` on 448, `LX/0jhc.A00` on 449). `ThumbnailLoader.cachedBitmap(String)` keeps
   Instagram's own helper as the fallback tier and `cachedBitmap(Object, String)` replays the same
   cache chain for the real `ExtendedImageUrl`, whose `ImageCacheKey` carries the width/height that a
   `SimpleImageUrl` built from a bare URL always reports as -1. The app ships no
@@ -130,8 +130,8 @@ the APK at patch time — class presence plus shape — not from the version str
   host cache and falls back to its own memory, disk and bounded-network tiers; a cache miss
   returns null and never starts a load.
 - The instant tier is the extension-owned decode mirror. A typed return hook on every image cache
-  decode facade (anchored by `ImageInfraMemoryCache::decodeAndMaybeAdd`; one facade on 448, two on
-  439) copies the decoded bitmap into `ThumbnailMirror` under the `ImageCacheKey` identity string
+  decode facade (anchored by `ImageInfraMemoryCache::decodeAndMaybeAdd`; one or two facades per
+  release) copies the decoded bitmap into `ThumbnailMirror` under the `ImageCacheKey` identity string
   (the field `hashCode` reads) held by the facade's `String` key parameter. The key parameter is
   resolved from data flow at every external call site of the facade, the postprocessor slot from
   the cache interface signature, and the bitmap field from the resolved cache chain; the hook
@@ -186,4 +186,4 @@ when it exists in the default file.
 3. Migrate `Entity.getMethod` call sites to patch-time direct invokes or semantic bridges.
 4. Split the resolver-linter fixture corpus per app: generic rules in the library, IG
    fixtures (like `ImageInfo.Bc4` duplicates and the `A8h` 135-candidate case) in this repo.
-5. Keep 439 + 448 APKs in the validation matrix and gate `dry-run` cardinality per resolver.
+5. Keep the 448 + 449 APKs in the validation matrix and gate `dry-run` cardinality per resolver.
