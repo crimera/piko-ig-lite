@@ -36,7 +36,7 @@ import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 /** Pando key of the ad payload a sponsored `Media` carries; organic posts leave it null. */
 private const val INJECTED_KEY = "injected"
 
-private const val HIDE_ADS = "$FEED_FILTER_DESCRIPTOR->hideAds()Z"
+internal const val HIDE_ADS = "$FEED_FILTER_DESCRIPTOR->hideAds()Z"
 private const val BOOLEAN_TRUE = "Ljava/lang/Boolean;->TRUE:Ljava/lang/Boolean;"
 private const val INTEGER_VALUE_OF = "Ljava/lang/Integer;->valueOf(I)Ljava/lang/Integer;"
 
