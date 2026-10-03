@@ -13,11 +13,8 @@ requests deeper validation.
 
 ## Read First
 
-Detailed rationale, examples, session-derived failures, and evidence templates:
-
-- [`references/fingerprint-development-workflow.md`](references/fingerprint-development-workflow.md)
-
-Read the reference when implementing or debugging a patch. The skill is self-contained. Its worked examples come from piko-x-lite (Twitter); the method applies unchanged to Instagram.
+The skill is self-contained. Its worked examples come from piko-x-lite (Twitter); the method applies unchanged to
+Instagram. Detailed case studies live in that repository's copy of this skill.
 
 Load companion skills only when needed:
 
