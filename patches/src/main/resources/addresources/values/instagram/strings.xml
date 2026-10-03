@@ -40,6 +40,15 @@
     <string name="piko_ig_download_username_folder_title">Split media by username</string>
     <string name="piko_ig_download_username_folder_summary">Creates subfolders based on username</string>
 
+    <string name="piko_ig_category_ghost_title">Ghost mode</string>
+    <string name="piko_ig_category_ghost_summary">Use Instagram without telling people what you saw</string>
+    <string name="piko_ig_ghost_stories_title">Hide story views</string>
+    <string name="piko_ig_ghost_stories_summary">Stories you watch are not marked as seen for their author</string>
+    <string name="piko_ig_ghost_instants_title">Hide Instant views</string>
+    <string name="piko_ig_ghost_instants_summary">Instants you watch are not marked as seen for their author</string>
+    <string name="piko_ig_ghost_messages_title">Hide message views</string>
+    <string name="piko_ig_ghost_messages_summary">Messages and disappearing photos you open are not marked as seen for the sender</string>
+
     <!-- Download sheet and toasts. -->
     <string name="piko_copied_media_link">Copied media link</string>
     <string name="piko_download_all_count">Download all (%1$d)</string>

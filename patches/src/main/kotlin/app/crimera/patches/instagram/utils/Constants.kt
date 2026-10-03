@@ -53,5 +53,7 @@ object Constants {
 
     const val ADS_DESCRIPTOR = "$PATCHES_DESCRIPTOR/ads"
 
+    const val GHOST_DESCRIPTOR = "$PATCHES_DESCRIPTOR/ghost"
+
     const val SETTINGS_DESCRIPTOR = "$INTEGRATIONS_PACKAGE/settings"
 }

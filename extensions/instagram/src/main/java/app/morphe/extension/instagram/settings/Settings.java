@@ -21,6 +21,9 @@ public final class Settings {
     public static final String DOWNLOAD_SHEET_THUMBNAILS = "instagram.downloads.sheet_thumbnails";
     public static final String DIRECT_DOWNLOAD = "instagram.downloads.direct";
     public static final String DOWNLOAD_USERNAME_FOLDER = "instagram.downloads.username_folder";
+    public static final String GHOST_STORIES = "instagram.ghost.stories";
+    public static final String GHOST_INSTANTS = "instagram.ghost.instants";
+    public static final String GHOST_MESSAGES = "instagram.ghost.messages";
 
     private Settings() {
     }
@@ -55,5 +58,17 @@ public final class Settings {
 
     public static boolean downloadUsernameFolder() {
         return SettingsRegistry.getBooleanOrDefault(DOWNLOAD_USERNAME_FOLDER, false);
+    }
+
+    public static boolean ghostStories() {
+        return SettingsRegistry.getBooleanOrDefault(GHOST_STORIES, false);
+    }
+
+    public static boolean ghostInstants() {
+        return SettingsRegistry.getBooleanOrDefault(GHOST_INSTANTS, false);
+    }
+
+    public static boolean ghostMessages() {
+        return SettingsRegistry.getBooleanOrDefault(GHOST_MESSAGES, false);
     }
 }

@@ -45,6 +45,15 @@ internal object Categories {
             iconResourceName = "instagram_download_outline_24",
             order = 200,
         )
+
+    val GHOST =
+        SettingsCategory(
+            id = "instagram.ghost",
+            titleResourceName = "piko_ig_category_ghost_title",
+            summaryResourceName = "piko_ig_category_ghost_summary",
+            iconResourceName = "instagram_eye_off_outline_24",
+            order = 300,
+        )
 }
 
 internal fun BytecodePatchBuilder.instagramToggle(
