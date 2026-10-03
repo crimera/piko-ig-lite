@@ -53,7 +53,7 @@ public final class Settings {
     }
 
     public static boolean directDownload() {
-        return SettingsRegistry.getBooleanOrDefault(DIRECT_DOWNLOAD, false);
+        return SettingsRegistry.getBooleanOrDefault(DIRECT_DOWNLOAD, true);
     }
 
     public static boolean downloadUsernameFolder() {

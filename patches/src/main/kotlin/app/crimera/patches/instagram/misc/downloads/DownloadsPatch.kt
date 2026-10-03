@@ -180,7 +180,7 @@ val downloadsPatch =
             category = Categories.DOWNLOADS,
             strings = settingStrings("piko_ig_direct_download"),
             order = 600,
-            defaultValue = false,
+            defaultValue = true,
         )
         instagramToggle(
             id = "instagram.downloads.username_folder",
@@ -279,8 +279,8 @@ private fun hookFeedRowBinder(saveButtonId: Long): FeedRowState {
     val bindMethod = requireExactlyOne("feed UFI bind method", bindCandidates)
     val binderClass = patchContext.classDefBy(bindMethod.definingClass)
 
-    // 448 keeps the session in a binder field; 439 passes it through a parameter whose type exposes
-    // exactly one `UserSession`. Prefer the binder's own field.
+    // The session lives in a binder field, or comes through a parameter whose type exposes exactly one
+    // `UserSession`. Prefer the binder's own field.
     val binderSessionFields = binderClass.fields.filter { it.type == USER_SESSION_DESCRIPTOR }
     val sessionSource =
         if (binderSessionFields.isEmpty()) {
@@ -393,7 +393,7 @@ private fun injectCurrentMediaIndex(rowState: FeedRowState) {
  * The feed row type decides how the UFI row is rendered: `MEDIA_UFI` (view), `LITHO_MEDIA_UFI` or
  * `COMPOSE_MEDIA_UFI`. Only the view renderer creates the holder [hookFeedRowBinder] hooks, so the
  * main feed is pinned to `view`; other modules keep the original selector result and get the Litho
- * button instead. 439 has a static and an instance selector, and both are pinned.
+ * button instead. Both a static and an instance selector are pinned when a release has them.
  */
 context(patchContext: BytecodePatchContext)
 private fun pinMainFeedToViewUfi() {
