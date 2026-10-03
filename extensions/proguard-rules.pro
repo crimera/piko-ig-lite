@@ -12,8 +12,8 @@
 # module is shrunk on its own, so R8 cannot see those references: every class the bundle or another
 # module uses at runtime must be kept explicitly.
 #
-# Plain `-keep class app.morphe.**` would do that, but it also keeps the piko-extension-settings
-# settings screens that this bundle pulls in for the shared bottom sheet and never opens. So the
+# Plain `-keep class app.morphe.**` would do that, but it also keeps the settings screens that
+# piko-extension-library carries and this bundle pulls in for the shared bottom sheet and never opens. So the
 # packages that must stay are listed here, and piko-patches-library keeps its own widgets, theme
 # and logging through the `consumer-rules.pro` it ships.
 #

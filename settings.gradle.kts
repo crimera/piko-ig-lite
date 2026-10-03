@@ -69,7 +69,6 @@ if (pikoLibraryBuild != null) {
         dependencySubstitution {
             substitute(module("app.crimera:piko-patches-library")).using(project(":"))
             substitute(module("app.crimera:piko-extension-library")).using(project(":extension"))
-            substitute(module("app.crimera:piko-extension-settings")).using(project(":extension-settings"))
         }
     }
 }
