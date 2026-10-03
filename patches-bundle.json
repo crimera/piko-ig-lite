@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-10-03T09:35:32",
-  "description": "## [0.1.0-dev.2](https://github.com/crimera/piko-ig-lite/compare/v0.1.0-dev.1...v0.1.0-dev.2) (2026-10-03)\n\n### 🐛 Bug Fixes\n\n* **ci:** grant the release the issue and pull request permissions it uses ([fb8d0ae](https://github.com/crimera/piko-ig-lite/commit/fb8d0ae8e8bd09f1b0e2dfcf8ca6d4c442edae83))",
-  "download_url": "https://github.com/crimera/piko-ig-lite/releases/download/v0.1.0-dev.2/patches-0.1.0-dev.2.mpp",
+  "created_at": "2026-10-03T09:45:58",
+  "description": "## [0.1.0-dev.3](https://github.com/crimera/piko-ig-lite/compare/v0.1.0-dev.2...v0.1.0-dev.3) (2026-10-03)\n\n### 🐛 Bug Fixes\n\n* **ci:** confirm the dev release completes end to end ([e691ecb](https://github.com/crimera/piko-ig-lite/commit/e691ecb800ee524cee35386f0ad51caa6709f8b1))",
+  "download_url": "https://github.com/crimera/piko-ig-lite/releases/download/v0.1.0-dev.3/patches-0.1.0-dev.3.mpp",
   "signature_download_url": "",
-  "version": "0.1.0-dev.2"
+  "version": "0.1.0-dev.3"
 }

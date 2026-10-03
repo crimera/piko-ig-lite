@@ -1,3 +1,9 @@
+## [0.1.0-dev.3](https://github.com/crimera/piko-ig-lite/compare/v0.1.0-dev.2...v0.1.0-dev.3) (2026-10-03)
+
+### 🐛 Bug Fixes
+
+* **ci:** confirm the dev release completes end to end ([e691ecb](https://github.com/crimera/piko-ig-lite/commit/e691ecb800ee524cee35386f0ad51caa6709f8b1))
+
 ## [0.1.0-dev.2](https://github.com/crimera/piko-ig-lite/compare/v0.1.0-dev.1...v0.1.0-dev.2) (2026-10-03)
 
 ### 🐛 Bug Fixes
