@@ -21,6 +21,9 @@ jobs:
       packages: write
       id-token: write
       attestations: write
+      # semantic-release searches and closes its own failure issues, and labels released ones.
+      issues: write
+      pull-requests: write
     env:
       # The shared libraries and the Morphe plugin come from GitHub Packages, which needs a token
       # even for public packages, so no Gradle step may go without it.
