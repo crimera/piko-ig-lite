@@ -4,7 +4,12 @@
   </a>
 </p>
 
-Lean [Piko](https://github.com/crimera/piko) patch bundle for Instagram.
+Opinionated and lean [Piko](https://github.com/crimera/piko) patch bundle for Instagram.
+
+# Patches
+- Hide ads
+- Media downloads
+- Ghost mode
 
 # License
 
