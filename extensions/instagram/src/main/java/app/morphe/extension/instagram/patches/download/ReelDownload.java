@@ -21,8 +21,6 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.WeakHashMap;
 
-import app.morphe.extension.crimera.PikoUtils;
-import app.morphe.extension.crimera.sharedPreference.SharedPref;
 import app.morphe.extension.instagram.settings.Settings;
 import app.morphe.extension.instagram.utils.InstagramLogger;
 import app.morphe.extension.shared.ResourceType;
@@ -58,8 +56,7 @@ public final class ReelDownload {
     private ReelDownload() {}
 
     public static boolean isEnabled() {
-        return Boolean.TRUE.equals(SharedPref.getBooleanPref(Settings.ENABLE_DOWNLOAD))
-                && Boolean.TRUE.equals(SharedPref.getBooleanPref(Settings.REEL_DOWNLOAD_BUTTON));
+        return Settings.reelDownloadButton();
     }
 
     public static void register(Object component) {
@@ -163,7 +160,6 @@ public final class ReelDownload {
             InstagramLogger.printInfo(() -> "reel download ctx=" + context.getClass().getName());
             DownloadUtils.downloadPost(context, userSession, media, 0);
         } catch (Exception e) {
-            PikoUtils.logger(e);
             InstagramLogger.printException(() -> "Error at reel download", e);
             Utils.showToastShort(e.getMessage());
         }

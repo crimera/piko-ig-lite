@@ -15,6 +15,8 @@ import app.crimera.patches.instagram.feed.BRIDGE_OBJECT_DESCRIPTOR
 import app.crimera.patches.instagram.feed.FEED_FILTER_DESCRIPTOR
 import app.crimera.patches.instagram.feed.feedFilterHookPatch
 import app.crimera.patches.instagram.misc.extension.sharedExtensionPatch
+import app.crimera.patches.instagram.misc.settings.Categories
+import app.crimera.patches.instagram.misc.settings.instagramToggle
 import app.crimera.patches.instagram.models.MEDIA_DESCRIPTOR
 import app.crimera.patches.instagram.models.PandoField
 import app.crimera.patches.instagram.models.PandoModel
@@ -26,6 +28,7 @@ import app.crimera.patches.instagram.models.resolvedFeedModels
 import app.crimera.patches.instagram.models.resolvedModelGetter
 import app.crimera.patches.instagram.utils.Constants.COMPATIBILITY_INSTAGRAM
 import app.crimera.patches.instagram.utils.replaceBridgeBody
+import app.crimera.patches.settings.settingStrings
 import app.morphe.patcher.patch.BytecodePatchContext
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
@@ -36,7 +39,7 @@ import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 /** Pando key of the ad payload a sponsored `Media` carries; organic posts leave it null. */
 private const val INJECTED_KEY = "injected"
 
-internal const val HIDE_ADS = "$FEED_FILTER_DESCRIPTOR->hideAds()Z"
+private const val HIDE_FEED_ADS = "$FEED_FILTER_DESCRIPTOR->hideAds()Z"
 private const val BOOLEAN_TRUE = "Ljava/lang/Boolean;->TRUE:Ljava/lang/Boolean;"
 private const val INTEGER_VALUE_OF = "Ljava/lang/Integer;->valueOf(I)Ljava/lang/Integer;"
 
@@ -48,6 +51,14 @@ val hideFeedAdsPatch =
     ) {
         compatibleWith(COMPATIBILITY_INSTAGRAM)
         dependsOn(sharedExtensionPatch, feedFilterHookPatch)
+
+        instagramToggle(
+            id = "instagram.ads.hide_feed",
+            category = Categories.ADS,
+            strings = settingStrings("piko_ig_hide_feed_ads"),
+            order = 100,
+            defaultValue = true,
+        )
 
         execute {
             val models = resolvedFeedModels()
@@ -132,7 +143,7 @@ private fun disableClientAdInsertions(models: ResolvedFeedModels) {
         relocateBranchTargets = true,
     ) {
         val value = scratchRegister()
-        invokeStatic(methodReference(HIDE_ADS))
+        invokeStatic(methodReference(HIDE_FEED_ADS))
         moveResult(value, "Z")
         ifEqz(value, Target.Original)
 

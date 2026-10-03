@@ -11,6 +11,13 @@ import app.morphe.patcher.extensions.InstructionExtensions.instructions
 import app.morphe.patches.all.misc.extension.ExtensionHook
 import app.morphe.util.registersUsed
 import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.Method
+
+/** The instruction after `super.onCreate`, where the shared extension patch stores the context. */
+internal fun instagramInitInsertIndex(method: Method): Int =
+    method.instructions.indexOfFirst { instruction ->
+        instruction.opcode == Opcode.INVOKE_SUPER
+    } + 1
 
 internal val instagramInitHook =
     ExtensionHook(
@@ -21,11 +28,7 @@ internal val instagramInitHook =
                     classDef.endsWith("/InstagramAppShell;")
                 },
             ),
-        insertIndexResolver = { method ->
-            method.instructions.indexOfFirst { instruction ->
-                instruction.opcode == Opcode.INVOKE_SUPER
-            } + 1
-        },
+        insertIndexResolver = { method -> instagramInitInsertIndex(method) },
         contextRegisterResolver = { method ->
             val invokeSuperInstruction =
                 method.instructions.first { instruction ->

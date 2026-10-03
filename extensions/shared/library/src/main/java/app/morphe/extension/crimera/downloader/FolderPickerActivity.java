@@ -10,12 +10,10 @@ package app.morphe.extension.crimera.downloader;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.provider.DocumentsContract;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import app.morphe.extension.shared.Utils;
 import app.morphe.extension.shared.Logger;
-import app.morphe.extension.crimera.constants.ExtensionStrings;
 
 public class FolderPickerActivity extends AppCompatActivity {
 
@@ -50,11 +48,10 @@ public class FolderPickerActivity extends AppCompatActivity {
                             flags);
 
                     StorageUtils.saveCustomTreeUri(treeUri);
-                    StorageUtils.saveCustomPath(DocumentsContract.getTreeDocumentId(treeUri));
-                    toast(ExtensionStrings.DOWNLOAD_SET_PATH_SUCCESS);
+                    toast(DownloadMessages.SET_PATH_SUCCESS);
                 } catch (Exception e) {
                     Logger.printException(() -> "setting path failure", e);
-                    toast(ExtensionStrings.DOWNLOAD_SET_PATH_FAILED);
+                    toast(DownloadMessages.SET_PATH_FAILED);
                 }
             }
         }

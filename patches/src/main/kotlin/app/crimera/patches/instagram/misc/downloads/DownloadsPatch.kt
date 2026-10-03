@@ -18,6 +18,9 @@ import app.crimera.patches.instagram.entity.originalSoundDataIntf.originalSoundD
 import app.crimera.patches.instagram.entity.trackDataIntf.trackDataIntfEntity
 import app.crimera.patches.instagram.entity.videoData.videoDataEntity
 import app.crimera.patches.instagram.misc.extension.sharedExtensionPatch
+import app.crimera.patches.instagram.misc.settings.Categories
+import app.crimera.patches.instagram.misc.settings.instagramToggle
+import app.crimera.patches.settings.settingStrings
 import app.crimera.patches.instagram.misc.settings.addSettingsActivityPatch
 import app.crimera.patches.instagram.utils.Constants.COMPATIBILITY_INSTAGRAM
 import app.crimera.patches.instagram.utils.Constants.DOWNLOAD_DESCRIPTOR
@@ -29,8 +32,6 @@ import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
 import app.morphe.patches.all.misc.resources.ResourceType
-import app.morphe.patches.all.misc.resources.addAppResources
-import app.morphe.patches.all.misc.resources.addResourcesPatch
 import app.morphe.patches.all.misc.resources.getResourceId
 import app.morphe.patches.all.misc.resources.resourceMappingPatch
 import app.morphe.util.getReference
@@ -156,16 +157,40 @@ val downloadsPatch =
             decoderEntity,
             resourceMappingPatch,
             // Download folder selection runs through the shared FolderPickerActivity, which has
-            // to be declared in the manifest, and every sheet/toast label uses the bundled piko
-            // string resources. Neither bootstrap is part of the base extension patch.
+            // to be declared in the manifest. It is not part of the base extension patch.
             addSettingsActivityPatch,
-            addResourcesPatch,
+        )
+
+        instagramToggle(
+            id = "instagram.downloads.feed_button",
+            category = Categories.DOWNLOADS,
+            strings = settingStrings("piko_ig_feed_download_button"),
+            order = 200,
+            defaultValue = true,
+        )
+        instagramToggle(
+            id = "instagram.downloads.sheet_thumbnails",
+            category = Categories.DOWNLOADS,
+            strings = settingStrings("piko_ig_download_sheet_thumbnails"),
+            order = 500,
+            defaultValue = true,
+        )
+        instagramToggle(
+            id = "instagram.downloads.direct",
+            category = Categories.DOWNLOADS,
+            strings = settingStrings("piko_ig_direct_download"),
+            order = 600,
+            defaultValue = false,
+        )
+        instagramToggle(
+            id = "instagram.downloads.username_folder",
+            category = Categories.DOWNLOADS,
+            strings = settingStrings("piko_ig_download_username_folder"),
+            order = 700,
+            defaultValue = false,
         )
 
         execute {
-            addAppResources("shared")
-            addAppResources("instagram")
-
             val saveButtonId = getResourceId(ResourceType.ID, "row_feed_button_save")
             val rowState = hookFeedRowBinder(saveButtonId)
             injectCurrentMediaIndex(rowState)

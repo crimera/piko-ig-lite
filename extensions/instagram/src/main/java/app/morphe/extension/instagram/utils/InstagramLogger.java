@@ -7,18 +7,19 @@ package app.morphe.extension.instagram.utils;
 
 import app.morphe.extension.crimera.logging.LogSanitizer;
 import app.morphe.extension.crimera.logging.PikoLogger;
-import app.morphe.extension.crimera.sharedPreference.SharedPref;
-import app.morphe.extension.instagram.settings.Settings;
+import app.morphe.extension.crimera.settings.SettingsRegistry;
 import app.morphe.extension.shared.Logger;
 
 /**
  * Instagram binding of the shared {@link PikoLogger}. Morphe's info and exception log methods are
- * unconditional, so Instagram code logs through here and output follows the "Piko Debug" setting.
+ * unconditional, so Instagram code logs through here and output follows {@link #isLoggingEnabled()}.
  *
  * <p>Nothing is captured for export yet: Instagram has no equivalent of the server error hooks,
  * so the capture switch is off.
  */
 public final class InstagramLogger {
+    private static final String DEBUG_SETTING_ID = "instagram.debug";
+
     private static final PikoLogger LOGGER = new PikoLogger(
             InstagramLogger::isLoggingEnabled,
             () -> false,
@@ -28,13 +29,19 @@ public final class InstagramLogger {
     private InstagramLogger() {
     }
 
+    /** The shared logger, for the settings host. */
+    public static PikoLogger logger() {
+        return LOGGER;
+    }
+
     /**
-     * Instagram can read preferences before it has a context, in which case the setting resolves to
-     * its default. Anything unexpected also reads as off: diagnostics are opt-in.
+     * Diagnostics are opt-in and no setting enables them yet, so this stays off unless the registry
+     * holds an {@code instagram.debug} toggle. Anything unexpected, such as a read before the
+     * registry exists, also reads as off.
      */
     public static boolean isLoggingEnabled() {
         try {
-            return Boolean.TRUE.equals(SharedPref.getBooleanPref(Settings.PIKO_DEBUG));
+            return SettingsRegistry.getBooleanOrDefault(DEBUG_SETTING_ID, false);
         } catch (Throwable ignored) {
             return false;
         }

@@ -27,9 +27,6 @@ import java.util.Arrays;
 import java.util.Collections;
 
 import app.morphe.extension.instagram.settings.Settings;
-import app.morphe.extension.instagram.utils.Pref;
-import app.morphe.extension.crimera.sharedPreference.SharedPref;
-import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.entity.MediaData;
 import app.morphe.extension.instagram.entity.ImageData;
 import app.morphe.extension.instagram.entity.UserData;
@@ -40,12 +37,9 @@ import app.morphe.extension.instagram.utils.InstagramLogger;
 import app.morphe.extension.shared.ResourceType;
 import app.morphe.extension.shared.ResourceUtils;
 import app.morphe.extension.shared.Utils;
-import app.morphe.extension.instagram.patches.Links;
-import app.morphe.extension.crimera.ObjectBrowser;
 import app.morphe.extension.crimera.downloader.MediaDownloader;
 import app.morphe.extension.crimera.downloader.DownloadRequest;
 import app.morphe.extension.crimera.downloader.MediaType;
-import app.morphe.extension.crimera.PikoUtils;
 
 import com.instagram.common.session.UserSession;
 
@@ -54,7 +48,7 @@ public class DownloadUtils {
     private static final String DRAWABLE_DOWNLOAD_ICON = "instagram_download_outline_24";
 
     public static String getSubfolderName(String username){
-        boolean SPLIT_BY_USERNAME = Pref.downloadUsernameFolder() && SettingsStatus.downloadMedia;
+        boolean SPLIT_BY_USERNAME = Settings.downloadUsernameFolder();
         return SPLIT_BY_USERNAME ? username : null;
     }
 
@@ -79,7 +73,7 @@ public class DownloadUtils {
      */
     public static void downloadPost(Context context,  UserSession userSession, Object mediaObject, int position) {
         try {
-            boolean ENABLE_DIRECT_DOWNLOAD = Pref.enableDirectDownload() && SettingsStatus.downloadMedia;
+            boolean ENABLE_DIRECT_DOWNLOAD = Settings.directDownload();
             position = position < 1 ? 0 : position;
             MediaData mediaInfo = new MediaData(mediaObject, userSession);
             if (ENABLE_DIRECT_DOWNLOAD || mediaInfo.getCarouselSize() <= 1) {
@@ -89,7 +83,6 @@ public class DownloadUtils {
             }
 
         } catch (Exception e) {
-            PikoUtils.logger(e);
             InstagramLogger.printException(() -> "Error at downloadPost", e);
         }
     }
@@ -245,7 +238,6 @@ public class DownloadUtils {
         try {
             downloadMedia(context, mediaInfo, position, MediaType.ANY);
         } catch (Exception e) {
-            PikoUtils.logger(e);
             InstagramLogger.printException(() -> "Error at downloadFromSheet", e);
             Utils.showToastShort(e.getMessage());
         }
@@ -255,7 +247,6 @@ public class DownloadUtils {
         try {
             downloadMedia(context, mediaInfo, indexes);
         } catch (Exception e) {
-            PikoUtils.logger(e);
             InstagramLogger.printException(() -> "Error at downloadFromSheet", e);
             Utils.showToastShort(e.getMessage());
         }
@@ -356,10 +347,7 @@ public class DownloadUtils {
 
     /** Shared by the injected Litho component and the view holder hook. */
     public static boolean isFeedDownloadButtonEnabled() {
-        // The patch can run without the settings suite, so read the toggles directly instead of
-        // the settings-status-gated Pref helper.
-        return Boolean.TRUE.equals(SharedPref.getBooleanPref(Settings.ENABLE_DOWNLOAD))
-                && Boolean.TRUE.equals(SharedPref.getBooleanPref(Settings.FEED_DOWNLOAD_BUTTON));
+        return Settings.feedDownloadButton();
     }
 
     /** Adds a download button beside the save button; called from the patched row binder on every bind. */
@@ -473,8 +461,7 @@ public class DownloadUtils {
     private static final String STORY_LIKE_CONTAINER_ID = "toolbar_like_container";
 
     public static boolean isStoryDownloadButtonEnabled() {
-        return Boolean.TRUE.equals(SharedPref.getBooleanPref(Settings.ENABLE_DOWNLOAD))
-                && Boolean.TRUE.equals(SharedPref.getBooleanPref(Settings.STORY_DOWNLOAD_BUTTON));
+        return Settings.storyDownloadButton();
     }
 
     /**
@@ -513,7 +500,7 @@ public class DownloadUtils {
         Context context = anchor.getContext();
         try {
             MediaData storyInfo = new MediaData(media, userSession);
-            boolean directDownload = Pref.enableDirectDownload() && SettingsStatus.downloadMedia;
+            boolean directDownload = Settings.directDownload();
             boolean video = storyInfo.isVideo();
             InstagramLogger.printInfo(() -> "story download video=" + video + " direct=" + directDownload
                     + " ctx=" + context.getClass().getName());
@@ -532,14 +519,12 @@ public class DownloadUtils {
                     try {
                         downloadMedia(context, storyInfo, 0, MediaType.IMAGE);
                     } catch (Exception e) {
-                        PikoUtils.logger(e);
                         InstagramLogger.printException(() -> "Error at story photo download", e);
                         Utils.showToastShort(e.getMessage());
                     }
                 }
             });
         } catch (Exception e) {
-            PikoUtils.logger(e);
             InstagramLogger.printException(() -> "Error at downloadStory", e);
             Utils.showToastShort(e.getMessage());
         }
@@ -585,25 +570,5 @@ public class DownloadUtils {
                 model.getPaddingLeft(), model.getPaddingTop(), model.getPaddingRight(), model.getPaddingBottom());
         row.addView(button, row.indexOfChild(model), cloneLayoutParams(model));
         return button;
-    }
-
-    public static void externalDownloader(Object mediaObject, int currentMediaIndex){
-        try {
-            String packageName = Pref.externalDownloaderPackageName();
-            packageName = packageName == null ? "" : packageName.trim();
-            if(packageName.isEmpty()){
-                PikoUtils.toast(str("piko_external_downloader_package_name_not_set"));
-                return;
-            }
-            if(!PikoUtils.isAppInstalledAndEnabled(packageName)){
-                PikoUtils.toast(str("piko_external_downloader_package_name_not_found"));
-                return;
-            }
-            String link = Links.generatePostLink(mediaObject, currentMediaIndex);
-            PikoUtils.shareTextToPackageName(link, packageName);
-        } catch (Exception e){
-            PikoUtils.logger(e);
-            InstagramLogger.printException(() -> "Error at externalDownloader", e);
-        }
     }
 }

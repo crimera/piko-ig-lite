@@ -30,8 +30,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import app.morphe.extension.crimera.constants.ExtensionStrings;
-import app.morphe.extension.crimera.PikoUtils;
+import app.morphe.extension.shared.Logger;
+import app.morphe.extension.shared.Utils;
 
 public class MediaDownloader {
     private static final String CHANNEL_ID = "media_download_channel";
@@ -122,7 +122,7 @@ public class MediaDownloader {
         } else {
             builder = new Notification.Builder(context);
         }
-        String downloadStartString = ExtensionStrings.DOWNLOAD_ONGOING + request.fileName;
+        String downloadStartString = DownloadMessages.ONGOING + request.fileName;
         builder.setSmallIcon(android.R.drawable.stat_sys_download)
                 .setContentTitle(downloadStartString)
                 .setOngoing(true) // Keeps notification un-swipable during download execution.
@@ -134,7 +134,7 @@ public class MediaDownloader {
             Uri targetDirectoryUri = getTargetDirectoryUri(request);
             if (findChildDocument(targetDirectoryUri, request.fileName, null) != null) {
                 if (request.batch == null) {
-                    showToast(ExtensionStrings.DOWNLOAD_MEDIA_EXISTS);
+                    showToast(DownloadMessages.MEDIA_EXISTS);
                 } else {
                     request.batch.skipped++;
                 }
@@ -200,7 +200,7 @@ public class MediaDownloader {
 
             final int finalNotificationId = notificationId;
             final String finalFileName = request.fileName;
-            final String downloadCompletedString = ExtensionStrings.DOWNLOAD_COMPLETED + finalFileName;
+            final String downloadCompletedString = DownloadMessages.COMPLETED + finalFileName;
 
             mainHandler.post(() -> {
                 builder.setSmallIcon(android.R.drawable.stat_sys_download_done)
@@ -220,10 +220,10 @@ public class MediaDownloader {
             // A failing batch (offline, no space) reports once, not once per item.
             if (request.batch == null || !request.batch.errorShown) {
                 if (request.batch != null) request.batch.errorShown = true;
-                showToast(ExtensionStrings.DOWNLOAD_ERROR + e.getMessage());
+                showToast(DownloadMessages.ERROR + e.getMessage());
             }
             notificationManager.cancel(notificationId);
-            PikoUtils.logger(e);
+            Logger.printException(() -> "download failure", e);
         } finally {
             finishBatchItem(request);
             isDownloading = false;
@@ -237,12 +237,12 @@ public class MediaDownloader {
         if (batch == null) return;
         batch.remaining--;
         if (batch.remaining == 0 && batch.skipped == batch.total) {
-            showToast(ExtensionStrings.DOWNLOAD_MEDIA_EXISTS);
+            showToast(DownloadMessages.MEDIA_EXISTS);
         }
     }
 
     private void showToast(String msg) {
-        mainHandler.post(() -> PikoUtils.toast(msg));
+        mainHandler.post(() -> Utils.showToastShort(msg));
     }
 
     private Uri getTargetDirectoryUri(DownloadRequest request) throws Exception {
@@ -315,7 +315,7 @@ public class MediaDownloader {
                 }
             }
         } catch (Exception e) {
-            PikoUtils.logger(e);
+            Logger.printException(() -> "findChildDocument failure", e);
         }
 
         return null;

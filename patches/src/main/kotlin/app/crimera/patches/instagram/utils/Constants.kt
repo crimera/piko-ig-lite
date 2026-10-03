@@ -50,4 +50,8 @@ object Constants {
     const val PATCHES_DESCRIPTOR = "$INTEGRATIONS_PACKAGE/patches"
 
     const val DOWNLOAD_DESCRIPTOR = "$PATCHES_DESCRIPTOR/download"
+
+    const val ADS_DESCRIPTOR = "$PATCHES_DESCRIPTOR/ads"
+
+    const val SETTINGS_DESCRIPTOR = "$INTEGRATIONS_PACKAGE/settings"
 }

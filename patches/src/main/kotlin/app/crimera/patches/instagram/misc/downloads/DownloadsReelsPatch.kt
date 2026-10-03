@@ -14,6 +14,9 @@ import app.crimera.patches.common.requireExactlyOne
 import app.crimera.patches.instagram.utils.Constants.DOWNLOAD_DESCRIPTOR
 import app.crimera.patches.instagram.utils.replaceBridgeBody
 import app.crimera.patches.instagram.misc.extension.sharedExtensionPatch
+import app.crimera.patches.instagram.misc.settings.Categories
+import app.crimera.patches.instagram.misc.settings.instagramToggle
+import app.crimera.patches.settings.settingStrings
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.literal
 import app.morphe.patcher.patch.BytecodePatchContext
@@ -96,6 +99,14 @@ val reelDownloadPatch =
         description = "Adds a download button to the reels action column.",
     ) {
         dependsOn(sharedExtensionPatch, resourceMappingPatch)
+
+        instagramToggle(
+            id = "instagram.downloads.reel_button",
+            category = Categories.DOWNLOADS,
+            strings = settingStrings("piko_ig_reel_download_button"),
+            order = 400,
+            defaultValue = true,
+        )
 
         execute {
             injectReelDownloadButton(getResourceId(ResourceType.ID, REEL_SAVE_BUTTON_ID))

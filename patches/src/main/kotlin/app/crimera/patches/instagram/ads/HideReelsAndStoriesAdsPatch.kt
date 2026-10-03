@@ -11,11 +11,17 @@ import app.crimera.bytecode.insertHook
 import app.crimera.bytecode.methodReference
 import app.crimera.patches.common.requireExactlyOne
 import app.crimera.patches.instagram.misc.extension.sharedExtensionPatch
+import app.crimera.patches.instagram.misc.settings.Categories
+import app.crimera.patches.instagram.misc.settings.instagramToggle
+import app.crimera.patches.instagram.utils.Constants.ADS_DESCRIPTOR
 import app.crimera.patches.instagram.utils.Constants.COMPATIBILITY_INSTAGRAM
+import app.crimera.patches.settings.settingStrings
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.patch.BytecodePatchContext
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.string
+
+private const val HIDE_REELS_AND_STORIES_ADS = "$ADS_DESCRIPTOR/ReelsAndStoriesAds;->hideAds()Z"
 
 /** Annotation the ad injection engine puts on a candidate it is about to inject; no other code uses it. */
 private const val AD_POD_KEY = "Is ad pod"
@@ -46,6 +52,14 @@ val hideReelsAndStoriesAdsPatch =
         compatibleWith(COMPATIBILITY_INSTAGRAM)
         dependsOn(sharedExtensionPatch)
 
+        instagramToggle(
+            id = "instagram.ads.hide_reels_and_stories",
+            category = Categories.ADS,
+            strings = settingStrings("piko_ig_hide_reels_and_stories_ads"),
+            order = 200,
+            defaultValue = true,
+        )
+
         execute {
             blockAdInjection()
         }
@@ -66,7 +80,7 @@ private fun blockAdInjection() {
     // The hook is read on every attempt, so the toggle applies without restarting the viewer.
     decision.method.insertHook(index = 0, relocateBranchTargets = true) {
         val value = scratchRegister()
-        invokeStatic(methodReference(HIDE_ADS))
+        invokeStatic(methodReference(HIDE_REELS_AND_STORIES_ADS))
         moveResult(value, "Z")
         ifEqz(value, Target.Original)
         constInt(value, 0)

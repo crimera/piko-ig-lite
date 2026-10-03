@@ -159,8 +159,23 @@ through the `SettingsTheme` installed with `PikoTheme.install`. This repo suppli
 attributes the retired local `SheetTheme` did, against the activity context, so the sheet keeps
 Instagram's light/dark/Prism palette and its monochrome accent. `DownloadSheet` installs the theme
 before it builds the sheet; the components carry the motion, gesture and window-inset behaviour
-unchanged. `extensions/proguard-rules.pro` keeps only the extension packages this bundle calls, so
-R8 does not ship the library's settings screens as dead weight.
+unchanged. `extensions/proguard-rules.pro` keeps only the extension packages this bundle calls.
+
+### Settings
+
+The settings screen is the shared one from `piko-patches-library`; this repo owns no settings UI code
+beyond its binding. A feature patch declares its toggles with `instagramToggle` (a thin wrapper over the
+library's `settingsToggle`), which makes the patch depend on `instagramSettingsPatch`. That base patch
+adds the `InstagramSettingsActivity` manifest entry, the Piko icon and the strings, installs the host and
+loads `SettingsRegistry` right after `Utils.setContext`, and hooks the profile action bar so the signed-in
+user's own profile shows the Piko icon. Extension code reads values through `settings/Settings`; each ID
+and default there has a twin in the patch that declares it. A new feature patch adds its toggle in its own
+`bytecodePatch` block and its strings to `values/instagram/strings.xml`, and nothing else.
+
+The profile action bar hook resolves by shape (the static builder `ProfileActionBar` calls, the two
+consecutive `removeAllViews` calls, the single `User` field behind the profile state), so it carries no
+obfuscated names. The strings file holds only strings the bundle uses; add translations next to a string
+when it exists in the default file.
 
 ## What is next
 

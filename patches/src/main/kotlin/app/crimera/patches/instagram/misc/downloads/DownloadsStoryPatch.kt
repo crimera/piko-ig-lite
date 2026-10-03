@@ -10,6 +10,9 @@ import app.crimera.bytecode.insertHook
 import app.crimera.bytecode.methodReference
 import app.crimera.patches.common.requireExactlyOne
 import app.crimera.patches.instagram.misc.extension.sharedExtensionPatch
+import app.crimera.patches.instagram.misc.settings.Categories
+import app.crimera.patches.instagram.misc.settings.instagramToggle
+import app.crimera.patches.settings.settingStrings
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.literal
 import app.morphe.patcher.patch.BytecodePatchContext
@@ -52,6 +55,14 @@ val storyDownloadPatch =
         description = "Adds a download button to the icon row beside the story reply pill.",
     ) {
         dependsOn(sharedExtensionPatch, resourceMappingPatch)
+
+        instagramToggle(
+            id = "instagram.downloads.story_button",
+            category = Categories.DOWNLOADS,
+            strings = settingStrings("piko_ig_story_download_button"),
+            order = 300,
+            defaultValue = true,
+        )
 
         execute {
             hookStoryToolbarBinder(getResourceId(ResourceType.ID, STORY_BUTTONS_CONTAINER_ID))

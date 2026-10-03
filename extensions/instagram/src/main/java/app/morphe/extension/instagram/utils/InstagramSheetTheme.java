@@ -43,6 +43,11 @@ public final class InstagramSheetTheme implements SettingsTheme {
         PikoTheme.install(INSTANCE);
     }
 
+    /** The tint of Instagram's own toolbar icons, resolved against the context's theme. */
+    public static int iconColor(Context context) {
+        return INSTANCE.primaryAccent(context);
+    }
+
     @Override
     public boolean isDark(Context context) {
         int background = attrColor(context, "igds_color_primary_background", LIGHT_SURFACE);

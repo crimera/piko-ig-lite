@@ -9,7 +9,6 @@ package app.morphe.extension.instagram.patches.feed;
 import java.util.Iterator;
 import java.util.List;
 
-import app.morphe.extension.crimera.sharedPreference.SharedPref;
 import app.morphe.extension.instagram.settings.Settings;
 import app.morphe.extension.instagram.utils.InstagramLogger;
 
@@ -24,9 +23,7 @@ public final class FeedFilter {
 
     /** Read on every page, so the toggle applies from the next feed load. */
     public static boolean hideAds() {
-        // The patch can run without the settings suite, so read the toggle directly instead of
-        // the settings-status-gated Pref helper.
-        return Boolean.TRUE.equals(SharedPref.getBooleanPref(Settings.DISABLE_ADS));
+        return Settings.hideFeedAds();
     }
 
     /** Injection point: the parsed `feed_items` list, right before the feed response stores it. */

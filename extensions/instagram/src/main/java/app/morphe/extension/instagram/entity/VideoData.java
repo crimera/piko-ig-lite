@@ -9,9 +9,8 @@ package app.morphe.extension.instagram.entity;
 
 import java.util.Map;
 import java.util.HashMap;
-import app.morphe.extension.crimera.PikoUtils;
-
 import app.morphe.extension.crimera.downloader.MediaType;
+import app.morphe.extension.instagram.utils.InstagramLogger;
 
 public class VideoData extends Entity implements MediaInterface {
     /** Simple name shared by the Pando implementation across releases and package moves. */
@@ -31,7 +30,7 @@ public class VideoData extends Entity implements MediaInterface {
         try{
             return (Map) super.getMethod("methodname");
         } catch (Exception e) {
-            PikoUtils.logger(e);
+            InstagramLogger.printException(() -> "video version map failure", e);
         }
         return new HashMap();
     }
@@ -40,7 +39,7 @@ public class VideoData extends Entity implements MediaInterface {
         try{
             return (Map) super.getMethod("methodname");
         } catch (Exception e) {
-            PikoUtils.logger(e);
+            InstagramLogger.printException(() -> "video version map failure", e);
         }
         return new HashMap();
     }

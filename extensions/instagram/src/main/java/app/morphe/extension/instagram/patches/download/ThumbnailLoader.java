@@ -36,7 +36,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import app.morphe.extension.crimera.sharedPreference.SharedPref;
 import app.morphe.extension.instagram.settings.Settings;
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.instagram.utils.InstagramLogger;
@@ -165,13 +164,8 @@ public final class ThumbnailLoader {
         }
     }
 
-    /**
-     * Mirrors the feed button toggle: the settings UI is not part of this bundle, so both toggles
-     * are read directly instead of through the settings-status-gated {@code Pref} helpers.
-     */
     public static boolean isDownloadSheetThumbnailsEnabled() {
-        return Boolean.TRUE.equals(SharedPref.getBooleanPref(Settings.ENABLE_DOWNLOAD))
-                && Boolean.TRUE.equals(SharedPref.getBooleanPref(Settings.DOWNLOAD_SHEET_THUMBNAILS));
+        return Settings.downloadSheetThumbnails();
     }
 
     /**
