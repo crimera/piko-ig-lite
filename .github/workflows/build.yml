@@ -41,4 +41,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           archive: false
-          path: patches/build/libs/patches-*.mpp
+          path: |
+            patches/build/libs/patches-*.mpp
+            !patches/build/libs/patches-*-sources.mpp
+            !patches/build/libs/patches-*-javadoc.mpp
