@@ -6,8 +6,8 @@ that already live in `piko-patches-library`.
 
 ## The failure modes this replaces
 
-The legacy piko entity layer works, but every release bump costs days because of four
-patterns. They are all fixable at the shared resolution layer without rewriting feature
+The legacy piko entity layer (since removed; the download path now reads `Media` through typed
+`MediaBridge` stubs) worked, but every release bump cost days because of four patterns. They are all fixable at the shared resolution layer without rewriting feature
 patches.
 
 1. **Placeholder strings rewritten by position.** Extension classes contain sentinel names
@@ -77,9 +77,8 @@ patch execution) belongs in the library as the backstop for whatever migration r
 
 Keep only verified stable models as `compileOnly` stubs. When a stable owner exposes an
 unstable method, inject a direct invoke from the patch instead of reflecting at runtime.
-`Entity.getMethod` is a migration target: either resolve exact parameter types at patch time
-and inject them, or move call sites to typed bridges emitted by
-`piko-patches-library`'s `common.semantic` helpers.
+The download path follows this: `MediaBridge` stubs are filled with direct calls resolved by Pando key
+or stable anchor, with owner and return types asserted. No `Entity` reflection remains.
 
 ### 5. Fail closed, always
 
@@ -179,11 +178,9 @@ when it exists in the default file.
 
 ## What is next
 
-1. Port the entity layer to `InstagramModels` with typed `Resolved*` models; delete the
-   `Decoder.kt` globals.
+1. Delete the remaining `Decoder.kt` globals (`CURRENT_MEDIA_FIELD`, `MEDIA_ADD_INFO_CLASS_NAME`).
 2. Add the placeholder-completeness gate to `piko-patches-library` and run it for every
    bundle build.
-3. Migrate `Entity.getMethod` call sites to patch-time direct invokes or semantic bridges.
-4. Split the resolver-linter fixture corpus per app: generic rules in the library, IG
+3. Split the resolver-linter fixture corpus per app: generic rules in the library, IG
    fixtures (like `ImageInfo.Bc4` duplicates and the `A8h` 135-candidate case) in this repo.
-5. Keep the 448 + 449 APKs in the validation matrix and gate `dry-run` cardinality per resolver.
+4. Keep the 448 + 449 APKs in the validation matrix and gate `dry-run` cardinality per resolver.
