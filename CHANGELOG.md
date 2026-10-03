@@ -1,3 +1,9 @@
+## [0.1.0-dev.2](https://github.com/crimera/piko-ig-lite/compare/v0.1.0-dev.1...v0.1.0-dev.2) (2026-10-03)
+
+### 🐛 Bug Fixes
+
+* **ci:** grant the release the issue and pull request permissions it uses ([fb8d0ae](https://github.com/crimera/piko-ig-lite/commit/fb8d0ae8e8bd09f1b0e2dfcf8ca6d4c442edae83))
+
 ## [0.1.0-dev.1](https://github.com/crimera/piko-ig-lite/compare/v0.0.0...v0.1.0-dev.1) (2026-10-03)
 
 ### 🐛 Bug Fixes
