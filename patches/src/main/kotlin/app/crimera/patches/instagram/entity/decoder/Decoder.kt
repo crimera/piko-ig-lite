@@ -6,9 +6,7 @@
 
 package app.crimera.patches.instagram.entity.decoder
 
-import app.crimera.patches.instagram.entity.mediadata.AslSessionRelatedFingerprint
 import app.crimera.patches.instagram.utils.Constants.EDIT_MEDIA_INFO_FRAGMENT_CLASS
-import app.crimera.utils.extensionToClassName
 import app.crimera.utils.fieldExtractor
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.patch.PatchException
@@ -19,31 +17,17 @@ import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import kotlin.properties.Delegates
 
-var MEDIA_CLASS_NAME: String by Delegates.notNull()
-    private set
-
-var MEDIAEXT_CLASS_NAME: String by Delegates.notNull()
-    private set
-
-var USER_MODEL_CLASS_NAME: String by Delegates.notNull()
-    private set
-
 var MEDIA_ADD_INFO_CLASS_NAME: String by Delegates.notNull()
     private set
 
 var CURRENT_MEDIA_FIELD: FieldReference by Delegates.notNull()
     private set
 
-var COMMENT_BUTTON_CLASS: String by Delegates.notNull()
-    private set
-
 val decoderEntity =
     bytecodePatch(
-        description = "This patch is used hold class and field names that are commonly used",
+        description = "Resolves the current media field of the feed row state the download follows",
     ) {
         execute {
-            MEDIA_CLASS_NAME = AslSessionRelatedFingerprint.method.parameters[0].type
-
             EditMediaInfoGetCurrentMediaIdFingerprint.method.apply {
                 val directIgetIndex = indexOfFirstInstruction(Opcode.IGET)
                 if (directIgetIndex >= 0) {
@@ -64,11 +48,5 @@ val decoderEntity =
                 }
                 MEDIA_ADD_INFO_CLASS_NAME = CURRENT_MEDIA_FIELD.definingClass
             }
-
-            COMMENT_BUTTON_CLASS = CommentButtonOnClickFingerprint.method.parameters[0].type
-
-            USER_MODEL_CLASS_NAME = UserTagInfoDictInitFingerprint.method.parameters[0].type
-
-            MEDIAEXT_CLASS_NAME = ReelsInlineQualitySurveyRelatedFingerprint.classDef.type
         }
     }

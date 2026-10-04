@@ -6,8 +6,8 @@ that already live in `piko-patches-library`.
 
 ## The failure modes this replaces
 
-The legacy piko entity layer works, but every release bump costs days because of four
-patterns. They are all fixable at the shared resolution layer without rewriting feature
+The legacy piko entity layer (since removed; the download path now reads `Media` through typed
+`MediaBridge` stubs) worked, but every release bump cost days because of four patterns. They are all fixable at the shared resolution layer without rewriting feature
 patches.
 
 1. **Placeholder strings rewritten by position.** Extension classes contain sentinel names
@@ -77,9 +77,8 @@ patch execution) belongs in the library as the backstop for whatever migration r
 
 Keep only verified stable models as `compileOnly` stubs. When a stable owner exposes an
 unstable method, inject a direct invoke from the patch instead of reflecting at runtime.
-`Entity.getMethod` is a migration target: either resolve exact parameter types at patch time
-and inject them, or move call sites to typed bridges emitted by
-`piko-patches-library`'s `common.semantic` helpers.
+The download path follows this: `MediaBridge` stubs are filled with direct calls resolved by Pando key
+or stable anchor, with owner and return types asserted. No `Entity` reflection remains.
 
 ### 5. Fail closed, always
 
@@ -99,7 +98,7 @@ and inject them, or move call sites to typed bridges emitted by
 2. `./gradlew :patches:build --no-daemon` (extension build + animalsniffer floor).
 3. `./gradlew :patches:lintResolvers --no-daemon`.
 4. `./gradlew :patches:checkExtensionDescriptors --no-daemon`.
-5. `./patch-ig.sh <apk>`; confirm `Applied:` and `Saved to:`.
+5. `./patch-ig-cli.sh <apk>`; confirm `Applied:` and `Saved to:`.
 6. On failure, read the first `PatchException` candidate list. The fix belongs in the
    resolver, never in an `if (version == …)` branch and never in extension source.
 7. Cross-check the candidate resolvers against the older supported APK
@@ -117,17 +116,71 @@ the APK at patch time — class presence plus shape — not from the version str
   extension-descriptor gate.
 - `piko-ig-lite` wires the animalsniffer API floor, `lintResolvers` and
   `checkExtensionDescriptors` as verification tasks.
-- The feed download patch and its decoder closure are fail-closed: binder/selector lookups
+- The Downloads patch and its decoder closure are fail-closed: binder/selector lookups
   assert exactly one match, the image-variant accessor asserts at most one after `distinct()`,
   and order-contractual anchor scans carry directives explaining the contract.
+- Download sheet thumbnails ride emitted bridges resolved by the `SaveAsStickerHelper` /
+  `Error getting bitmap from cache` log anchors plus the static `(String) -> Bitmap` shape
+  (`LX/0PoN.A00` on 448, `LX/0jhc.A00` on 449). `ThumbnailLoader.cachedBitmap(String)` keeps
+  Instagram's own helper as the fallback tier and `cachedBitmap(Object, String)` replays the same
+  cache chain for the real `ExtendedImageUrl`, whose `ImageCacheKey` carries the width/height that a
+  `SimpleImageUrl` built from a bare URL always reports as -1. The app ships no
+  Coil/Glide/Fresco, so the loader probes each variant object and then its URL string against the
+  host cache and falls back to its own memory, disk and bounded-network tiers; a cache miss
+  returns null and never starts a load.
+- The instant tier is the extension-owned decode mirror. A typed return hook on every image cache
+  decode facade (anchored by `ImageInfraMemoryCache::decodeAndMaybeAdd`; one or two facades per
+  release) copies the decoded bitmap into `ThumbnailMirror` under the `ImageCacheKey` identity string
+  (the field `hashCode` reads) held by the facade's `String` key parameter. The key parameter is
+  resolved from data flow at every external call site of the facade, the postprocessor slot from
+  the cache interface signature, and the bitmap field from the resolved cache chain; the hook
+  fails closed when any of those are ambiguous. The mirror stores RGB_565 copies capped at 256px
+  and 10MB, and falls back to Instagram's in-memory cache when it has no copy.
+- Behind the mirror, the loader also reads Instagram's own disk cache through
+  `igDiskKey`/`igDiskCaches`/`igDiskOpen`, emitted from the singleton/facade and the reader
+  anchored by `ERROR_CONTENT_ID_NULL_ON_DISK_CACHE_LOOKUP`. The reader's `Du2(String, Map)` call
+  resolves the holder, entry and `InputStream` field chain, and the facade's no-arg `List`
+  accessor enumerates every disk cache; a release that routes disk reads differently fails closed
+  instead of reading the wrong stream. Load order is mirror -> host -> Instagram disk -> own
+  memory/disk -> bounded network, with a per-item `tier=` log line under `PikoIgThumb`.
+- The feed download button covers both UFI renderers. The view row binder hook serves the main
+  feed; Litho surfaces (e.g. the contextual profile feed) get a second icon component built
+  into the UFI builder. The node, component, wrapper and factory shapes are derived from the
+  save-icon instructions, not from obfuscated names. The live carousel index is read through
+  `DownloadUtils.currentMediaIndex`, whose body the patch emits from the resolved row-state fields.
+
+### Sheet UI ownership
+
+The bottom sheet is shared UI, not Instagram code: `BottomSheetView`, `ListItem`, `IconView` and
+`ButtonView` now ship in `piko-patches-library` as `app.morphe.extension.crimera.ui` and draw only
+through the `SettingsTheme` installed with `PikoTheme.install`. This repo supplies
+`InstagramSheetTheme` (in `extensions/instagram/.../utils`), which resolves the same `igds_*`
+attributes the retired local `SheetTheme` did, against the activity context, so the sheet keeps
+Instagram's light/dark/Prism palette and its monochrome accent. `DownloadSheet` installs the theme
+before it builds the sheet; the components carry the motion, gesture and window-inset behaviour
+unchanged. `extensions/proguard-rules.pro` keeps only the extension packages this bundle calls.
+
+### Settings
+
+The settings screen is the shared one from `piko-patches-library`; this repo owns no settings UI code
+beyond its binding. A feature patch declares its toggles with `instagramToggle` (a thin wrapper over the
+library's `settingsToggle`), which makes the patch depend on `instagramSettingsPatch`. That base patch
+adds the `InstagramSettingsActivity` manifest entry, the Piko icon and the strings, installs the host and
+loads `SettingsRegistry` right after `Utils.setContext`, and hooks the profile action bar so the signed-in
+user's own profile shows the Piko icon. Extension code reads values through `settings/Settings`; each ID
+and default there has a twin in the patch that declares it. A new feature patch adds its toggle in its own
+`bytecodePatch` block and its strings to `values/instagram/strings.xml`, and nothing else.
+
+The profile action bar hook resolves by shape (the static builder `ProfileActionBar` calls, the two
+consecutive `removeAllViews` calls, the single `User` field behind the profile state), so it carries no
+obfuscated names. The strings file holds only strings the bundle uses; add translations next to a string
+when it exists in the default file.
 
 ## What is next
 
-1. Port the entity layer to `InstagramModels` with typed `Resolved*` models; delete the
-   `Decoder.kt` globals.
+1. Delete the remaining `Decoder.kt` globals (`CURRENT_MEDIA_FIELD`, `MEDIA_ADD_INFO_CLASS_NAME`).
 2. Add the placeholder-completeness gate to `piko-patches-library` and run it for every
    bundle build.
-3. Migrate `Entity.getMethod` call sites to patch-time direct invokes or semantic bridges.
-4. Split the resolver-linter fixture corpus per app: generic rules in the library, IG
+3. Split the resolver-linter fixture corpus per app: generic rules in the library, IG
    fixtures (like `ImageInfo.Bc4` duplicates and the `A8h` 135-candidate case) in this repo.
-5. Keep 439 + 448 APKs in the validation matrix and gate `dry-run` cardinality per resolver.
+4. Keep the 448 + 449 APKs in the validation matrix and gate `dry-run` cardinality per resolver.

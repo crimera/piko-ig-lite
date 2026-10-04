@@ -10,10 +10,9 @@ package app.morphe.extension.instagram.patches.download;
 import static app.morphe.extension.instagram.utils.IgStr.str;
 
 import android.os.Build;
-import android.app.Dialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.app.Activity;
+import android.graphics.Color;
 import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
@@ -21,192 +20,272 @@ import android.view.ViewParent;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 
+import java.lang.reflect.Field;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 
-import app.morphe.extension.instagram.constants.Constants;
-import app.morphe.extension.instagram.constants.UI;
 import app.morphe.extension.instagram.settings.Settings;
-import app.morphe.extension.instagram.utils.Pref;
-import app.morphe.extension.crimera.sharedPreference.SharedPref;
-import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.entity.MediaData;
-import app.morphe.extension.instagram.entity.UserData;
-import app.morphe.extension.instagram.entity.VideoData;
-import app.morphe.extension.instagram.entity.InstagramDialogBox;
-import app.morphe.extension.instagram.entity.AudioMediaInterface;
-import app.morphe.extension.instagram.entity.MediaInterface;
+import app.morphe.extension.instagram.entity.ImageData;
 import app.morphe.extension.shared.Logger;
+import app.morphe.extension.instagram.utils.InstagramLogger;
 import app.morphe.extension.shared.ResourceType;
 import app.morphe.extension.shared.ResourceUtils;
 import app.morphe.extension.shared.Utils;
-import app.morphe.extension.instagram.settings.ActivityHook;
-import app.morphe.extension.instagram.patches.Links;
-import app.morphe.extension.crimera.ObjectBrowser;
-import app.morphe.extension.crimera.downloader.MediaDownloader;
-import app.morphe.extension.crimera.downloader.DownloadRequest;
-import app.morphe.extension.crimera.downloader.MediaType;
-import app.morphe.extension.crimera.PikoUtils;
+import app.morphe.extension.instagram.entity.MediaType;
 
 import com.instagram.common.session.UserSession;
 
 public class DownloadUtils {
+    private static final String DRAWABLE_DOWNLOAD_ICON = "instagram_download_outline_24";
 
     public static String getSubfolderName(String username){
-        boolean SPLIT_BY_USERNAME = Pref.downloadUsernameFolder() && SettingsStatus.downloadMedia;
+        boolean SPLIT_BY_USERNAME = Settings.downloadUsernameFolder();
         return SPLIT_BY_USERNAME ? username : null;
     }
 
     /**
-     * Username used for downloaded file names. The user-data decoder is not part of the decoupled
-     * feed-download patch set, so fall back to a neutral name instead of failing the download.
+     * Username used for downloaded file names, read from the post's `Media`. Falls back to a
+     * neutral name instead of failing the download when the post carries no author.
      */
     private static String feedDownloadUsername(MediaData mediaData) {
-        try {
-            return mediaData.getUserData().getUsername();
-        } catch (Exception e) {
-            return "user";
-        }
+        String username = getMediaUsername(mediaData.getObject());
+        return username == null || username.isEmpty() ? "user" : username;
     }
 
-    private static void buildVariantDialogBox(Context context, MediaData currentMediaData, MediaType mediaType) throws Exception {
-        String username = feedDownloadUsername(currentMediaData);
-        List<MediaInterface> variantList;
-        String title = "";
-        if(mediaType.equals(MediaType.VIDEO)){
-            title = str("piko_video_variants");
-            variantList = currentMediaData.getVideoVariants();
-        }else{
-            title = str("piko_image_variants");
-            variantList = currentMediaData.getImageVariants();
-        }
-
-        InstagramDialogBox dialog = new InstagramDialogBox(context);
-        ArrayList<String> options = new ArrayList<>();
-        variantList.forEach(item -> options.add(item.getVariantTag()));
-        CharSequence[] items = options.toArray(new CharSequence[0]);
-
-        dialog.addDialogMenuItems(items, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface d, int which) {
-                MediaInterface data = variantList.get(which);
-
-                try {
-                    String filename = username + "_"+currentMediaData.getVariantFileName(data);
-                    String mediaUrl = data.getUrl();
-                    String subFolder = getSubfolderName(username);
-                    downloadMediaUrl(context,mediaUrl,subFolder,filename);
-                } catch (Exception e) {
-                    PikoUtils.logger(e);
-                    Logger.printException(() -> "Error at buildVariantDialogBox", e);
-                    Utils.showToastShort(e.getMessage());
-                }
-
-            }
-        });
-
-        dialog.setTitle(title);
-        dialog.setCancelable(true);
-        dialog.setCanceledOnTouchOutside(true);
-
-        Dialog dlg = dialog.getDialog();
-        dlg.show();
-
+    /** The author username of a `Media`, or null. The patch replaces this body. */
+    static String getMediaUsername(Object media) {
+        return null;
     }
 
-    private static void downloadDialogBox(Context context, MediaData mediaInfo, int position) throws Exception {
-        int carouselSize = mediaInfo.getCarouselSize();
-        MediaData currentMediaData = mediaInfo.getMediaAt(position);
-        String username = feedDownloadUsername(mediaInfo);
-        Boolean isCurrentMediaVideo = currentMediaData.isVideo();
-        Boolean currentMediaHasAudio = currentMediaData.hasAudio();
-
-        InstagramDialogBox dialog = new InstagramDialogBox(context);
-
-        ArrayList<String> options = new ArrayList<>();
-        options.add(str("piko_download_current_media"));
-        options.add(str("piko_download_as_image"));
-        if (currentMediaHasAudio) options.add(str("piko_download_audio"));
-        options.add(str("piko_copy_media_link"));
-        options.add(str("piko_image_variants"));
-        if (isCurrentMediaVideo) {
-            options.add(str("piko_video_variants"));
-            options.add(str("piko_open_video_externally"));
-        } else {
-            options.add(str("piko_open_image_externally"));
-        }
-
-        if (carouselSize > 1) options.add(str("piko_download_all"));
-
-        CharSequence[] items = options.toArray(new CharSequence[0]);
-
-        dialog.addDialogMenuItems(items, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface d, int which) {
-                try {
-                    // Doing like this because options are dynamic.
-                    String selectedOption = options.get(which);
-
-                    if (selectedOption.equals(str("piko_download_current_media"))) {
-                        downloadMedia(context, mediaInfo, position, MediaType.ANY);
-
-                    } else if (selectedOption.equals(str("piko_download_as_image"))) {
-                        downloadMedia(context, mediaInfo, position, MediaType.IMAGE);
-
-                    } else if (selectedOption.equals(str("piko_copy_media_link"))) {
-                        Utils.setClipboard(currentMediaData.getMediaLink());
-                        Utils.showToastShort(str("piko_copied_media_link"));
-
-                    } else if (selectedOption.equals(str("piko_open_video_externally")) || selectedOption.equals(str("piko_open_image_externally"))) {
-                        ActivityHook.handleUrlIntent(isCurrentMediaVideo, currentMediaData.getMediaLink());
-
-                    } else if (selectedOption.equals(str("piko_download_all"))) {
-                        downloadMedia(context, mediaInfo, -1, MediaType.ANY);
-
-                    } else if (selectedOption.equals(str("piko_download_audio"))) {
-                        downloadMedia(context, mediaInfo, position, MediaType.AUDIO);
-
-                    } else if (selectedOption.equals(str("piko_video_variants"))) {
-                        buildVariantDialogBox(context, currentMediaData, MediaType.VIDEO);
-
-                    } else if (selectedOption.equals(str("piko_image_variants"))) {
-                        buildVariantDialogBox(context, currentMediaData, MediaType.IMAGE);
-
-                    }
-                } catch (Exception e) {
-                    PikoUtils.logger(e);
-                    Logger.printException(() -> "Error at downloadDialogBox", e);
-                    Utils.showToastShort(e.getMessage());
-                }
-            }
-        });
-
-
-        dialog.setTitle(str("piko_download_options"));
-        dialog.setCancelable(true);
-        dialog.setCanceledOnTouchOutside(true);
-
-        Dialog dlg = dialog.getDialog();
-        dlg.show();
-    }
-
-
+    /**
+     * Entry point of every download button. Direct download saves the media being viewed. A single
+     * media always downloads straight away; a carousel opens the media picker sheet. Instagram
+     * serves the highest quality first, so no resolution is ever asked for.
+     */
     public static void downloadPost(Context context,  UserSession userSession, Object mediaObject, int position) {
+        downloadPost(context, userSession, mediaObject, position, false);
+    }
+
+    /**
+     * Long press of a download button. With direct download on a tap saves right away, so holding
+     * opens the chooser instead: the media picker of a carousel. Without direct download a tap already
+     * offers the chooser, so the hold does nothing.
+     */
+    public static void downloadPostChooser(
+            Context context, UserSession userSession, Object mediaObject, int position) {
+        if (!Settings.directDownload()) return;
+        downloadPost(context, userSession, mediaObject, position, true);
+    }
+
+    private static void downloadPost(
+            Context context, UserSession userSession, Object mediaObject, int position, boolean chooser) {
         try {
-            boolean ENABLE_DIRECT_DOWNLOAD = Pref.enableDirectDownload() && SettingsStatus.downloadMedia;
+            boolean ENABLE_DIRECT_DOWNLOAD = !chooser && Settings.directDownload();
             position = position < 1 ? 0 : position;
-            MediaData mediaInfo = new MediaData(mediaObject, userSession);
-            if (ENABLE_DIRECT_DOWNLOAD) {
+            MediaData mediaInfo = new MediaData(mediaObject);
+            if (ENABLE_DIRECT_DOWNLOAD || mediaInfo.getCarouselSize() <= 1) {
                 downloadMedia(context, mediaInfo, position, MediaType.ANY);
             } else {
-                downloadDialogBox(context, mediaInfo, position);
+                showDownloadSheet(context, mediaInfo);
             }
 
         } catch (Exception e) {
-            PikoUtils.logger(e);
-            Logger.printException(() -> "Error at downloadPost", e);
+            InstagramLogger.printException(() -> "Error at downloadPost", e);
         }
+    }
+
+    private static void showDownloadSheet(Context context, MediaData mediaInfo) throws Exception {
+        int carouselSize = mediaInfo.getCarouselSize();
+        List<DownloadItem> items = new ArrayList<>(carouselSize);
+        for (int index = 0; index < carouselSize; index++) {
+            MediaData mediaData = mediaInfo.getMediaAt(index);
+            boolean video = mediaData.isVideo();
+            List<ImageData> variants = sortedThumbnailVariants(mediaData);
+            List<Object> cacheObjects = new ArrayList<>(variants.size());
+            List<String> cacheUrls = new ArrayList<>(variants.size());
+            for (ImageData variant : variants) {
+                String url = imageUrl(variant);
+                if (url == null || cacheUrls.contains(url)) continue;
+                cacheObjects.add(imageObject(variant));
+                cacheUrls.add(url);
+            }
+            String networkUrl = smallThumbnailUrl(variants);
+            items.add(new DownloadItem(
+                    str(video ? "piko_media_video" : "piko_media_photo"),
+                    mediaData.getMediaLink(),
+                    video,
+                    cacheObjects,
+                    cacheUrls,
+                    networkUrl));
+            logThumbnailCandidates(index, variants, cacheObjects, cacheUrls, networkUrl);
+        }
+
+        DownloadSheet.show(context, items, feedDownloadUsername(mediaInfo), new DownloadSheet.Listener() {
+            @Override
+            public void onDownloadItem(int index) {
+                downloadFromSheet(context, mediaInfo, index);
+            }
+
+            @Override
+            public void onDownloadItems(List<Integer> indexes) {
+                downloadFromSheet(context, mediaInfo, indexes);
+            }
+
+            @Override
+            public void onDownloadAll() {
+                downloadFromSheet(context, mediaInfo, -1);
+            }
+        });
+    }
+
+    private static final int THUMBNAIL_TARGET_SIZE_PX = 256;
+
+    /** Image variants of the item, largest (display) variant first. */
+    private static List<ImageData> sortedThumbnailVariants(MediaData mediaData) {
+        List<ImageData> variants = new ArrayList<>(imageVariants(mediaData));
+        variants.sort((left, right) -> Integer.compare(imageSize(right), imageSize(left)));
+        return variants;
+    }
+
+    /**
+     * One diagnostic line per sheet item: every candidate with its variant size and whether the
+     * real `ExtendedImageUrl` object is available for the object-key probe.
+     */
+    private static void logThumbnailCandidates(
+            int index,
+            List<ImageData> variants,
+            List<Object> cacheObjects,
+            List<String> cacheUrls,
+            String networkUrl
+    ) {
+        StringBuilder message = new StringBuilder(512);
+        message.append("item[").append(index).append("] candidates=").append(cacheUrls.size());
+        for (ImageData variant : variants) {
+            String url = imageUrl(variant);
+            if (url == null) continue;
+            int candidateIndex = cacheUrls.indexOf(url);
+            if (candidateIndex < 0) continue;
+            message.append(" | ").append(imageDimensions(variant))
+                    .append(cacheObjects.get(candidateIndex) == null ? " (no-obj) " : " (obj) ")
+                    .append(url);
+        }
+        message.append(" network=").append(networkUrl == null ? "<none>" : networkUrl);
+        ThumbnailLoader.logDiagnostic(message.toString());
+    }
+
+    /**
+     * Smallest variant at or above the badge target, so the network fallback stays cheap without
+     * looking soft. Falls back to the largest smaller variant when every image is tiny.
+     */
+    private static String smallThumbnailUrl(List<ImageData> variants) {
+        ImageData best = null;
+        int bestSize = 0;
+        for (ImageData variant : variants) {
+            int size = imageSize(variant);
+            if (size <= 0) continue;
+            if (best == null || preferNetworkVariant(size, bestSize)) {
+                best = variant;
+                bestSize = size;
+            }
+        }
+        return best == null ? null : imageUrl(best);
+    }
+
+    private static boolean preferNetworkVariant(int size, int currentSize) {
+        boolean sizeAboveTarget = size >= THUMBNAIL_TARGET_SIZE_PX;
+        boolean currentAboveTarget = currentSize >= THUMBNAIL_TARGET_SIZE_PX;
+        if (sizeAboveTarget != currentAboveTarget) return sizeAboveTarget;
+        return sizeAboveTarget ? size < currentSize : size > currentSize;
+    }
+
+    private static List<ImageData> imageVariants(MediaData mediaData) {
+        try {
+            List<ImageData> variants = mediaData.getImageVariants();
+            return variants == null ? Collections.emptyList() : variants;
+        } catch (Exception e) {
+            Logger.printDebug(() -> "Could not read the media image variants for a thumbnail");
+            return Collections.emptyList();
+        }
+    }
+
+    private static int imageSize(ImageData variant) {
+        try {
+            return Math.max(variant.getWidth(), variant.getHeight());
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    private static String imageDimensions(ImageData variant) {
+        try {
+            return variant.getWidth() + "x" + variant.getHeight();
+        } catch (Exception e) {
+            return "?x?";
+        }
+    }
+
+    private static String imageUrl(ImageData variant) {
+        try {
+            return variant.getUrl();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** The real `ExtendedImageUrl` object, or null when the entity cannot expose it. */
+    private static Object imageObject(ImageData variant) {
+        try {
+            return variant.getObject();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static void downloadFromSheet(Context context, MediaData mediaInfo, int position) {
+        try {
+            downloadMedia(context, mediaInfo, position, MediaType.ANY);
+        } catch (Exception e) {
+            InstagramLogger.printException(() -> "Error at downloadFromSheet", e);
+            Utils.showToastShort(e.getMessage());
+        }
+    }
+
+    private static void downloadFromSheet(Context context, MediaData mediaInfo, List<Integer> indexes) {
+        try {
+            downloadMedia(context, mediaInfo, indexes);
+        } catch (Exception e) {
+            InstagramLogger.printException(() -> "Error at downloadFromSheet", e);
+            Utils.showToastShort(e.getMessage());
+        }
+    }
+
+    /** Downloads the picked media of a carousel behind a single toast. */
+    private static void downloadMedia(Context context, MediaData mediaInfo, List<Integer> indexes) throws Exception {
+        if (indexes.size() == 1) {
+            downloadMedia(context, mediaInfo, indexes.get(0), MediaType.ANY);
+            return;
+        }
+        if (!Utils.isNetworkConnected()) {
+            Utils.showToastShort(str("piko_no_internet"));
+            return;
+        }
+        String username = feedDownloadUsername(mediaInfo);
+        String subFolder = getSubfolderName(username);
+        List<DownloadService.Item> items = new ArrayList<>(indexes.size());
+        for (int index : indexes) {
+            MediaData mediaData = mediaInfo.getMediaAt(index);
+            items.add(new DownloadService.Item(
+                    mediaData.getMediaLink(), subFolder, username + "_" + mediaData.getDownloadFilename(MediaType.ANY)));
+        }
+        DownloadService.download(context, items, announcedAuthor(mediaInfo, username));
+    }
+
+    /** The author the batch message names, or null when the post carries none. */
+    private static String announcedAuthor(MediaData mediaInfo, String username) {
+        return getMediaUsername(mediaInfo.getObject()) != null ? username : null;
     }
 
     // Position is set to -1 if we want to download all medias from the media info object.
@@ -215,17 +294,10 @@ public class DownloadUtils {
             Utils.showToastShort(str("piko_no_internet"));
             return;
         }
-        MediaDownloader downloader = new MediaDownloader(context);
         String username = feedDownloadUsername(mediaInfo);
         String subFolder = getSubfolderName(username);
 
-        if (mediaType.equals(MediaType.AUDIO)) {
-            AudioMediaInterface audioMedia = mediaInfo.getMediaAt(position).getAudioMedia();
-            String audioUrl = audioMedia.getAudioUrl();
-            String fileName = audioMedia.getDownloadName() + ".mp3";
-            downloader.enqueue(new DownloadRequest(audioUrl, Constants.DEFAULT_AUDIO_FOLDER, fileName));
-
-        } else if (position != -1) {
+        if (position != -1) {
             MediaData mediaData = mediaInfo.getMediaAt(position);
             String mediaUrl;
             if (mediaType.equals(MediaType.IMAGE)) {
@@ -235,94 +307,97 @@ public class DownloadUtils {
             }
             String fileName = username+"_"+mediaData.getDownloadFilename(mediaType);
 
-            downloader.enqueue(new DownloadRequest(mediaUrl, subFolder, fileName));
+            DownloadService.download(
+                    context,
+                    Collections.singletonList(new DownloadService.Item(mediaUrl, subFolder, fileName)),
+                    announcedAuthor(mediaInfo, username));
 
-        } else if (position == -1) {
+        } else {
             int carouselSize = mediaInfo.getCarouselSize();
 
+            List<DownloadService.Item> items = new ArrayList<>(carouselSize);
             for (int index = 0; index < carouselSize; index++) {
                 MediaData currentMediaData = mediaInfo.getMediaAt(index);
                 String fileName = username+"_"+currentMediaData.getDownloadFilename(MediaType.ANY);
                 String mediaUrl = currentMediaData.getMediaLink();
-                downloader.enqueue(new DownloadRequest(mediaUrl, subFolder, fileName));
+                items.add(new DownloadService.Item(mediaUrl, subFolder, fileName));
             }
-        } else {
-            Utils.showToastShort("There is nothing to download");
+            DownloadService.download(context, items, announcedAuthor(mediaInfo, username));
         }
-
-    }
-
-
-    public static void downloadMediaUrl(Context context, String mediaUrl, String subFolder, String fileName) throws Exception {
-        if(!Utils.isNetworkConnected()){
-            Utils.showToastShort(str("piko_no_internet"));
-            return;
-        }
-        MediaDownloader downloader = new MediaDownloader(context);
-        downloader.enqueue(new DownloadRequest(mediaUrl, subFolder, fileName));
     }
 
     private static final Object FEED_DOWNLOAD_BUTTON_TAG = new Object();
-    private static final String[] FEED_BUTTON_GROUP_IDS = {
-            "row_feed_view_group_social_ufi_buttons",
-            "row_feed_view_group_buttons",
-    };
-    private static boolean feedDownloadButtonLogged;
+    private static final String MEDIA_CLASS_NAME = "com.instagram.feed.media.Media";
 
-    /**
-     * Adds a download button immediately beside the save/bookmark button of a feed post row.
-     * Called from the patched feed UFI row binder, so every rebind refreshes the captured media.
-     */
-    public static void addFeedDownloadButton(View rootView, Object mediaObject, UserSession userSession) {
+    /** Shared by the injected Litho component and the view holder hook. */
+    public static boolean isFeedDownloadButtonEnabled() {
+        return Settings.feedDownloadButton();
+    }
+
+    /** Adds a download button beside the save button; called from the patched row binder on every bind. */
+    public static void addFeedDownloadButton(
+            View rootView, Object media, UserSession userSession, Object rowState) {
         try {
-            if (rootView == null || mediaObject == null) return;
-            // The patch is opt-in and can run without the settings suite, so read the download
-            // toggle directly instead of the settings-status-gated Pref helper.
-            if (!SharedPref.getBooleanPref(Settings.ENABLE_DOWNLOAD)) return;
+            if (rootView == null || media == null) return;
+            if (!isFeedDownloadButtonEnabled()) {
+                removeFeedDownloadButton(rootView);
+                return;
+            }
 
             Context context = rootView.getContext();
             int saveButtonId = ResourceUtils.getIdentifier(context, ResourceType.ID, "row_feed_button_save");
-            if (saveButtonId == 0) return;
+            View saveButton = saveButtonId == 0 ? null : rootView.findViewById(saveButtonId);
+            if (saveButton == null || !(saveButton.getParent() instanceof ViewGroup)) return;
 
-            View saveButton = rootView.findViewById(saveButtonId);
-            if (saveButton == null) return;
-
-            ViewGroup buttonGroup = resolveFeedButtonGroup(rootView, saveButton);
-            if (buttonGroup == null) {
-                logFeedDownloadButton("feed download button: no UFI button group");
-                return;
-            }
+            // Litho hosts reject added views; their button is built into the component instead.
+            ViewGroup buttonGroup = (ViewGroup) saveButton.getParent();
+            if (buttonGroup.getClass().getName().startsWith("com.facebook.litho.")) return;
 
             ImageView button = buttonGroup.findViewWithTag(FEED_DOWNLOAD_BUTTON_TAG);
             if (button == null) {
                 button = createFeedDownloadButton(context, saveButton, buttonGroup);
-                logFeedDownloadButton("feed download button attached");
             }
-            if (button == null) return;
-
-            button.setOnClickListener(v -> downloadPost(context, userSession, mediaObject, 0));
+            button.setOnClickListener(
+                    v -> downloadPost(context, userSession, media, currentMediaIndex(rowState)));
+            button.setOnLongClickListener(v -> {
+                downloadPostChooser(context, userSession, media, currentMediaIndex(rowState));
+                return true;
+            });
         } catch (Exception e) {
-            Logger.printException(() -> "addFeedDownloadButton failure", e);
+            InstagramLogger.printException(() -> "addFeedDownloadButton failure", e);
         }
     }
 
     /**
-     * Resolves the horizontal button row that hosts the save button. The save button's parent is the
-     * only correct insert target: `row_feed_view_group_buttons` is an outer frame around the whole
-     * UFI area on current releases, while `row_feed_view_group_social_ufi_buttons` is the row itself.
-     * The id lookups remain as a fallback for layouts where the parent is not a plain ViewGroup.
+     * Live carousel index of a feed row state, read at click time so the download follows a swipe.
+     * The patch replaces this body with direct reads of the resolved row state fields.
      */
-    private static ViewGroup resolveFeedButtonGroup(View rootView, View saveButton) {
-        ViewParent parent = saveButton.getParent();
-        if (parent instanceof ViewGroup) return (ViewGroup) parent;
+    static int currentMediaIndex(Object rowState) {
+        return 0;
+    }
 
-        for (String idName : FEED_BUTTON_GROUP_IDS) {
-            int buttonGroupId = ResourceUtils.getIdentifier(rootView.getContext(), ResourceType.ID, idName);
-            if (buttonGroupId == 0) continue;
-            View candidate = rootView.findViewById(buttonGroupId);
-            if (candidate instanceof ViewGroup) return (ViewGroup) candidate;
+    /** Unwraps a feed row state to the single `Media` it holds; anything else is returned as is. */
+    static Object extractMedia(Object source) {
+        if (source == null || MEDIA_CLASS_NAME.equals(source.getClass().getName())) return source;
+        try {
+            for (Field field : source.getClass().getDeclaredFields()) {
+                if (!MEDIA_CLASS_NAME.equals(field.getType().getName())) continue;
+                field.setAccessible(true);
+                Object media = field.get(source);
+                if (media != null) return media;
+            }
+        } catch (Exception e) {
+            InstagramLogger.printException(() -> "Could not extract the media from the feed row state", e);
         }
-        return null;
+        return source;
+    }
+
+    /** Drops the button on rebind so turning the toggle off takes effect without recreating the row. */
+    private static void removeFeedDownloadButton(View rootView) {
+        View existing = rootView.findViewWithTag(FEED_DOWNLOAD_BUTTON_TAG);
+        if (existing == null) return;
+        ViewParent parent = existing.getParent();
+        if (parent instanceof ViewGroup) ((ViewGroup) parent).removeView(existing);
     }
 
     private static ImageView createFeedDownloadButton(Context context, View saveButton, ViewGroup buttonGroup) {
@@ -335,10 +410,7 @@ public class DownloadUtils {
                 saveButton.getPaddingTop(),
                 saveButton.getPaddingRight(),
                 saveButton.getPaddingBottom());
-
-        int insertIndex = buttonGroup.indexOfChild(saveButton);
-        if (insertIndex < 0) insertIndex = buttonGroup.getChildCount();
-        buttonGroup.addView(button, insertIndex, cloneLayoutParams(saveButton));
+        buttonGroup.addView(button, buttonGroup.indexOfChild(saveButton), cloneLayoutParams(saveButton));
         return button;
     }
 
@@ -358,51 +430,137 @@ public class DownloadUtils {
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
     }
 
-    /**
-     * Resolves the icon and its tint against the row context. The global application context
-     * cannot resolve activity scoped theme attributes such as `igds_color_primary_icon`.
-     */
+    /** Uses the row context: the application context cannot resolve activity scoped theme attributes. */
     private static void applyFeedDownloadIcon(ImageView button, Context context) {
-        int drawableId = ResourceUtils.getIdentifier(context, ResourceType.DRAWABLE, UI.DRAWABLE_DOWNLOAD_ICON);
+        int drawableId = ResourceUtils.getIdentifier(context, ResourceType.DRAWABLE, DRAWABLE_DOWNLOAD_ICON);
         if (drawableId == 0) return;
         button.setImageDrawable(context.getDrawable(drawableId));
 
-        try {
-            TypedValue typedValue = new TypedValue();
-            int attrId = ResourceUtils.getAttrIdentifier("igds_color_primary_icon");
-            if (attrId != 0
-                    && context.getTheme().resolveAttribute(attrId, typedValue, true)
-                    && typedValue.resourceId != 0) {
-                button.setColorFilter(context.getColor(typedValue.resourceId));
-            }
-        } catch (Exception ignored) {
+        int attrId = ResourceUtils.getAttrIdentifier("igds_color_primary_icon");
+        TypedValue typedValue = new TypedValue();
+        if (attrId != 0
+                && context.getTheme().resolveAttribute(attrId, typedValue, true)
+                && typedValue.resourceId != 0) {
+            button.setColorFilter(context.getColor(typedValue.resourceId));
         }
     }
 
-    /** One-shot diagnostic so a device test shows whether the hook reached a feed row. */
-    private static void logFeedDownloadButton(String message) {
-        if (feedDownloadButtonLogged) return;
-        feedDownloadButtonLogged = true;
-        Logger.printInfo(() -> message);
+    private static final Object STORY_DOWNLOAD_BUTTON_TAG = new Object();
+    private static final String STORY_LIKE_CONTAINER_ID = "toolbar_like_container";
+
+    public static boolean isStoryDownloadButtonEnabled() {
+        return Settings.storyDownloadButton();
     }
 
-    public static void externalDownloader(Object mediaObject, int currentMediaIndex){
+    /**
+     * Adds a download button to the story icon row beside the reply pill; called from the patched
+     * toolbar binder on every story bind, so the button is reused and always points at the story
+     * currently shown. {@code media} is the story's `Media`, null for stories that carry none.
+     */
+    public static void addStoryDownloadButton(View buttonsContainer, Object media, UserSession userSession) {
         try {
-            String packageName = Pref.externalDownloaderPackageName();
-            packageName = packageName == null ? "" : packageName.trim();
-            if(packageName.isEmpty()){
-                PikoUtils.toast(str("piko_external_downloader_package_name_not_set"));
+            if (!(buttonsContainer instanceof ViewGroup)) return;
+            ViewGroup row = (ViewGroup) buttonsContainer;
+
+            ImageView button = row.findViewWithTag(STORY_DOWNLOAD_BUTTON_TAG);
+            if (media == null || !isStoryDownloadButtonEnabled()) {
+                if (button != null) row.removeView(button);
                 return;
             }
-            if(!PikoUtils.isAppInstalledAndEnabled(packageName)){
-                PikoUtils.toast(str("piko_external_downloader_package_name_not_found"));
-                return;
+
+            Context context = row.getContext();
+            if (button == null) {
+                button = createStoryDownloadButton(context, row);
+                if (button == null) return;
             }
-            String link = Links.generatePostLink(mediaObject, currentMediaIndex);
-            PikoUtils.shareTextToPackageName(link, packageName);
-        } catch (Exception e){
-            PikoUtils.logger(e);
-            Logger.printException(() -> "Error at externalDownloader", e);
+            button.setOnClickListener(v -> downloadStory(v, userSession, media, false));
+            button.setOnLongClickListener(v -> {
+                if (Settings.directDownload()) downloadStory(v, userSession, media, true);
+                return true;
+            });
+        } catch (Exception e) {
+            InstagramLogger.printException(() -> "addStoryDownloadButton failure", e);
         }
+    }
+
+    /**
+     * A photo story downloads straight away. A video story offers the video or its cover frame as a
+     * photo (a story is flattened with its text and stickers either way), unless direct download is on,
+     * which keeps the video. Holding the button ([chooser]) offers the choice even then.
+     */
+    private static void downloadStory(View anchor, UserSession userSession, Object media, boolean chooser) {
+        Context context = anchor.getContext();
+        try {
+            MediaData storyInfo = new MediaData(media);
+            boolean directDownload = !chooser && Settings.directDownload();
+            boolean video = storyInfo.isVideo();
+            InstagramLogger.printInfo(() -> "story download video=" + video + " direct=" + directDownload
+                    + " ctx=" + context.getClass().getName());
+            if (!video || directDownload) {
+                downloadMedia(context, storyInfo, 0, MediaType.ANY);
+                return;
+            }
+            DownloadSheet.showStoryOptions(hostActivityOf(anchor), feedDownloadUsername(storyInfo), new DownloadSheet.StoryListener() {
+                @Override
+                public void onDownloadVideo() {
+                    downloadFromSheet(context, storyInfo, 0);
+                }
+
+                @Override
+                public void onDownloadPhoto() {
+                    try {
+                        downloadMedia(context, storyInfo, 0, MediaType.IMAGE);
+                    } catch (Exception e) {
+                        InstagramLogger.printException(() -> "Error at story photo download", e);
+                        Utils.showToastShort(e.getMessage());
+                    }
+                }
+            });
+        } catch (Exception e) {
+            InstagramLogger.printException(() -> "Error at downloadStory", e);
+            Utils.showToastShort(e.getMessage());
+        }
+    }
+
+    /**
+     * The activity hosting a story row. The row is inflated with a themed wrapper around the application
+     * context, and the window's decor view uses a `DecorContext`, neither of which reaches an activity.
+     * The ancestors the activity itself inflated (such as the content frame) do, so the view tree is walked
+     * upwards until one is found. Throws when none is, so the failure is visible instead of silent.
+     */
+    private static Activity hostActivityOf(View view) {
+        View current = view;
+        while (current != null) {
+            Activity activity = DownloadSheet.findActivity(current.getContext());
+            if (activity != null) return activity;
+            ViewParent parent = current.getParent();
+            current = parent instanceof View ? (View) parent : null;
+        }
+        throw new IllegalStateException("No activity found above the story download button");
+    }
+
+    /** Sized and spaced like the like button, which is the first icon of the row. */
+    private static ImageView createStoryDownloadButton(Context context, ViewGroup row) {
+        int likeContainerId = ResourceUtils.getIdentifier(context, ResourceType.ID, STORY_LIKE_CONTAINER_ID);
+        View model = likeContainerId == 0 ? null : row.findViewById(likeContainerId);
+        if (model == null || model.getParent() != row) {
+            model = row.getChildCount() == 0 ? null : row.getChildAt(0);
+        }
+        if (model == null) return null;
+
+        int drawableId = ResourceUtils.getIdentifier(context, ResourceType.DRAWABLE, DRAWABLE_DOWNLOAD_ICON);
+        if (drawableId == 0) return null;
+
+        ImageView button = new ImageView(context);
+        button.setTag(STORY_DOWNLOAD_BUTTON_TAG);
+        button.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        button.setImageDrawable(context.getDrawable(drawableId));
+        // The story viewer is always dark, and its icons are white.
+        button.setColorFilter(Color.WHITE);
+        button.setContentDescription(str("piko_download_current_media"));
+        button.setPadding(
+                model.getPaddingLeft(), model.getPaddingTop(), model.getPaddingRight(), model.getPaddingBottom());
+        row.addView(button, row.indexOfChild(model), cloneLayoutParams(model));
+        return button;
     }
 }

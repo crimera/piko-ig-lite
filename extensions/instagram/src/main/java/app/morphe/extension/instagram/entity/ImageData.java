@@ -8,9 +8,8 @@
 package app.morphe.extension.instagram.entity;
 
 import com.instagram.model.mediasize.ExtendedImageUrl;
-import app.morphe.extension.crimera.downloader.MediaType;
 
-public class ImageData implements MediaInterface {
+public class ImageData {
     private final ExtendedImageUrl obj;
 
     public ImageData(Object obj) {
@@ -25,20 +24,15 @@ public class ImageData implements MediaInterface {
         return Integer.valueOf(this.obj.getWidth());
     }
 
-    public String getVariantTag() {
-        try{
-            return this.getHeight()+"x"+this.getWidth();
-        } catch (Exception e) {
-            return "unknown";
-        }
-    }
-
     public String getUrl() throws Exception {
         return this.obj.getUrl();
     }
 
-    public MediaType getMediaType(){
-        return MediaType.IMAGE;
+    /**
+     * The wrapped `ExtendedImageUrl`. The patch-emitted cache bridge reads the real width/height
+     * from this object, which is what the feed's cache key is built from.
+     */
+    public Object getObject() {
+        return this.obj;
     }
-
 }

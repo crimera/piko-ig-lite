@@ -1,0 +1,42 @@
+name: ⭐ Feature request
+description: Create a detailed request for a new feature.
+title: 'feat: '
+labels: ['feature']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        # Piko IG Lite feature request
+
+        Before creating a new feature request, please keep the following in mind:
+
+        - This bundle only patches Instagram.
+        - **Do not submit a duplicate feature request**: Search for existing feature requests, including closed issues, [here](https://github.com/crimera/piko-ig-lite/issues?q=is%3Aissue).
+  - type: textarea
+    attributes:
+      label: Feature description
+      description: |
+        - Describe your feature in detail
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Motivation
+      description: |
+        A strong motivation is necessary for a feature request to be considered.
+
+        - Why should this feature be implemented?
+        - What is the explicit use case?
+        - What are the benefits?
+    validations:
+      required: true
+  - type: checkboxes
+    id: acknowledgements
+    attributes:
+      label: Acknowledgements
+      description: Your feature request will be closed if you don't follow the checklist below.
+      options:
+        - label: I have checked all open and closed feature requests and this is not a duplicate
+          required: true
+        - label: This is a feature request for Instagram
+          required: true
