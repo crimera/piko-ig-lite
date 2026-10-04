@@ -1,3 +1,9 @@
+## [0.1.0-dev.4](https://github.com/crimera/piko-ig-lite/compare/v0.1.0-dev.3...v0.1.0-dev.4) (2026-10-04)
+
+### ✨ New Features
+
+* **downloads:** move downloads to the shared downloader engine ([c65132a](https://github.com/crimera/piko-ig-lite/commit/c65132aa6f8a61fb6cb522745a899c7da1ef7aec))
+
 ## [0.1.0-dev.3](https://github.com/crimera/piko-ig-lite/compare/v0.1.0-dev.2...v0.1.0-dev.3) (2026-10-03)
 
 ### 🐛 Bug Fixes
