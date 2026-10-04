@@ -61,8 +61,6 @@
     <string name="piko_download_sheet_title">Download media</string>
     <string name="piko_download_story_photo">Download as photo</string>
     <string name="piko_download_story_video">Download</string>
-    <string name="piko_downloading_media_count">Downloading %1$d media</string>
-    <string name="piko_downloading_media_from_user">Downloading %1$d media from @%2$s</string>
     <string name="piko_media_photo">Photo</string>
     <string name="piko_media_video">Video</string>
     <string name="piko_no_internet">Please connect to internet</string>

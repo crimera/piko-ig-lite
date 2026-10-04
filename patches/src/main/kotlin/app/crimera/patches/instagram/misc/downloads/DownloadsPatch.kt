@@ -10,6 +10,7 @@ import app.crimera.bytecode.Target
 import app.crimera.bytecode.insertHook
 import app.crimera.bytecode.methodReference
 import app.crimera.patches.common.requireExactlyOne
+import app.crimera.patches.downloader.downloaderManifestPatch
 import app.crimera.patches.instagram.entity.decoder.CURRENT_MEDIA_FIELD
 import app.crimera.patches.instagram.entity.decoder.MEDIA_ADD_INFO_CLASS_NAME
 import app.crimera.patches.instagram.entity.decoder.decoderEntity
@@ -18,7 +19,6 @@ import app.crimera.patches.instagram.misc.extension.sharedExtensionPatch
 import app.crimera.patches.instagram.misc.settings.Categories
 import app.crimera.patches.instagram.misc.settings.instagramToggle
 import app.crimera.patches.settings.settingStrings
-import app.crimera.patches.instagram.misc.settings.addSettingsActivityPatch
 import app.crimera.patches.instagram.utils.Constants.COMPATIBILITY_INSTAGRAM
 import app.crimera.patches.instagram.utils.Constants.DOWNLOAD_DESCRIPTOR
 import app.morphe.patcher.Fingerprint
@@ -150,9 +150,8 @@ val downloadsPatch =
             mediaBridgesPatch,
             decoderEntity,
             resourceMappingPatch,
-            // Download folder selection runs through the shared FolderPickerActivity, which has
-            // to be declared in the manifest. It is not part of the base extension patch.
-            addSettingsActivityPatch,
+            // The shared downloader's folder picker and notification receivers have to be declared in the manifest.
+            downloaderManifestPatch,
         )
 
         instagramToggle(
@@ -185,6 +184,7 @@ val downloadsPatch =
         )
 
         execute {
+            installDownloaderAtStartup()
             val saveButtonId = getResourceId(ResourceType.ID, "row_feed_button_save")
             val rowState = hookFeedRowBinder(saveButtonId)
             injectCurrentMediaIndex(rowState)

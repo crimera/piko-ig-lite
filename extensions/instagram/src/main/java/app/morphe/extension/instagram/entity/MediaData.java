@@ -11,7 +11,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import app.morphe.extension.crimera.downloader.MediaType;
 
 /**
  * A feed, reel or story `Media` as the download path sees it. Every read goes through

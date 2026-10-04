@@ -14,26 +14,6 @@ import org.w3c.dom.Element
 /** Resource copied by [settingsActivityPatch]; the extension resolves its id at runtime. */
 internal const val PIKO_SETTINGS_ICON_DRAWABLE = "piko_ic_settings"
 
-/**
- * Registers the folder picker the shared downloader opens to select a destination directory
- * through SAF.
- */
-val addSettingsActivityPatch =
-    resourcePatch(
-        description = "Adds the download folder picker to the Android manifest.",
-    ) {
-        finalize {
-            document("AndroidManifest.xml").use { document ->
-                val application = document.getElementsByTagName("application").item(0) as Element
-
-                val activity = document.createElement("activity")
-                activity.setAttribute("android:name", "app.morphe.extension.crimera.downloader.FolderPickerActivity")
-                activity.setAttribute("android:exported", "false")
-                application.appendChild(activity)
-            }
-        }
-    }
-
 /** Declares the settings activity and copies the Piko icon its entry point shows. */
 internal val settingsActivityPatch =
     resourcePatch(

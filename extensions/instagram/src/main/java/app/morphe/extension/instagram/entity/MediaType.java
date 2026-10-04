@@ -5,7 +5,7 @@
 */
 
 
-package app.morphe.extension.crimera.downloader;
+package app.morphe.extension.instagram.entity;
 
 public enum MediaType {
     ANY,

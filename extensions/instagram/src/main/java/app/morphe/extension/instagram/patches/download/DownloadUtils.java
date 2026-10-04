@@ -34,9 +34,7 @@ import app.morphe.extension.instagram.utils.InstagramLogger;
 import app.morphe.extension.shared.ResourceType;
 import app.morphe.extension.shared.ResourceUtils;
 import app.morphe.extension.shared.Utils;
-import app.morphe.extension.crimera.downloader.MediaDownloader;
-import app.morphe.extension.crimera.downloader.DownloadRequest;
-import app.morphe.extension.crimera.downloader.MediaType;
+import app.morphe.extension.instagram.entity.MediaType;
 
 import com.instagram.common.session.UserSession;
 
@@ -276,23 +274,18 @@ public class DownloadUtils {
         }
         String username = feedDownloadUsername(mediaInfo);
         String subFolder = getSubfolderName(username);
-        List<DownloadRequest> requests = new ArrayList<>(indexes.size());
+        List<DownloadService.Item> items = new ArrayList<>(indexes.size());
         for (int index : indexes) {
             MediaData mediaData = mediaInfo.getMediaAt(index);
-            requests.add(new DownloadRequest(
+            items.add(new DownloadService.Item(
                     mediaData.getMediaLink(), subFolder, username + "_" + mediaData.getDownloadFilename(MediaType.ANY)));
         }
-        enqueueBatch(context, mediaInfo, requests, username);
+        DownloadService.download(context, items, announcedAuthor(mediaInfo, username));
     }
 
-    /** One announcement for the whole batch: how many media, and from whom when the author is known. */
-    private static void enqueueBatch(
-            Context context, MediaData mediaInfo, List<DownloadRequest> requests, String username) {
-        boolean knownAuthor = getMediaUsername(mediaInfo.getObject()) != null;
-        String announcement = knownAuthor
-                ? str("piko_downloading_media_from_user", requests.size(), username)
-                : str("piko_downloading_media_count", requests.size());
-        new MediaDownloader(context).enqueueAll(requests, announcement);
+    /** The author the batch message names, or null when the post carries none. */
+    private static String announcedAuthor(MediaData mediaInfo, String username) {
+        return getMediaUsername(mediaInfo.getObject()) != null ? username : null;
     }
 
     // Position is set to -1 if we want to download all medias from the media info object.
@@ -301,7 +294,6 @@ public class DownloadUtils {
             Utils.showToastShort(str("piko_no_internet"));
             return;
         }
-        MediaDownloader downloader = new MediaDownloader(context);
         String username = feedDownloadUsername(mediaInfo);
         String subFolder = getSubfolderName(username);
 
@@ -315,37 +307,23 @@ public class DownloadUtils {
             }
             String fileName = username+"_"+mediaData.getDownloadFilename(mediaType);
 
-            downloader.enqueue(new DownloadRequest(mediaUrl, subFolder, fileName));
+            DownloadService.download(
+                    context,
+                    Collections.singletonList(new DownloadService.Item(mediaUrl, subFolder, fileName)),
+                    announcedAuthor(mediaInfo, username));
 
-        } else if (position == -1) {
+        } else {
             int carouselSize = mediaInfo.getCarouselSize();
 
-            List<DownloadRequest> requests = new ArrayList<>(carouselSize);
+            List<DownloadService.Item> items = new ArrayList<>(carouselSize);
             for (int index = 0; index < carouselSize; index++) {
                 MediaData currentMediaData = mediaInfo.getMediaAt(index);
                 String fileName = username+"_"+currentMediaData.getDownloadFilename(MediaType.ANY);
                 String mediaUrl = currentMediaData.getMediaLink();
-                requests.add(new DownloadRequest(mediaUrl, subFolder, fileName));
+                items.add(new DownloadService.Item(mediaUrl, subFolder, fileName));
             }
-            if (requests.size() > 1) {
-                enqueueBatch(context, mediaInfo, requests, username);
-            } else {
-                for (DownloadRequest request : requests) downloader.enqueue(request);
-            }
-        } else {
-            Utils.showToastShort("There is nothing to download");
+            DownloadService.download(context, items, announcedAuthor(mediaInfo, username));
         }
-
-    }
-
-
-    public static void downloadMediaUrl(Context context, String mediaUrl, String subFolder, String fileName) throws Exception {
-        if(!Utils.isNetworkConnected()){
-            Utils.showToastShort(str("piko_no_internet"));
-            return;
-        }
-        MediaDownloader downloader = new MediaDownloader(context);
-        downloader.enqueue(new DownloadRequest(mediaUrl, subFolder, fileName));
     }
 
     private static final Object FEED_DOWNLOAD_BUTTON_TAG = new Object();
