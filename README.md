@@ -11,6 +11,10 @@ Opinionated and lean [Piko](https://github.com/crimera/piko) patch bundle for In
 - Media downloads
 - Ghost mode
 
+# Compatibility
+- 449.0.0.52.84 (385511871)
+- 448.0.0.52.84 (385412061)
+
 # License
 
 GPL-3.0-or-later, with the additional terms in [NOTICE](NOTICE). See [LICENSE](LICENSE).
