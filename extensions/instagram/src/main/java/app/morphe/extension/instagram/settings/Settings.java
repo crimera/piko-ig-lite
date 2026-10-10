@@ -24,6 +24,7 @@ public final class Settings {
     public static final String GHOST_STORIES = "instagram.ghost.stories";
     public static final String GHOST_INSTANTS = "instagram.ghost.instants";
     public static final String GHOST_MESSAGES = "instagram.ghost.messages";
+    public static final String SWIPE_CAMERA_GESTURE = "instagram.navigation.swipe_camera";
 
     private Settings() {
     }
@@ -70,5 +71,9 @@ public final class Settings {
 
     public static boolean ghostMessages() {
         return SettingsRegistry.getBooleanOrDefault(GHOST_MESSAGES, false);
+    }
+
+    public static boolean swipeCameraGesture() {
+        return SettingsRegistry.getBooleanOrDefault(SWIPE_CAMERA_GESTURE, true);
     }
 }

@@ -49,6 +49,11 @@
     <string name="piko_ig_ghost_messages_title">Hide message views</string>
     <string name="piko_ig_ghost_messages_summary">Messages and disappearing photos you open are not marked as seen for the sender</string>
 
+    <string name="piko_ig_category_navigation_title">Navigation</string>
+    <string name="piko_ig_category_navigation_summary">Swipes and gestures on the home feed</string>
+    <string name="piko_ig_swipe_camera_title">Disable swipe to camera</string>
+    <string name="piko_ig_swipe_camera_summary">A swipe right on the home feed no longer opens the camera. The camera button still works</string>
+
     <!-- Download sheet and toasts. -->
     <string name="piko_copied_media_link">Copied media link</string>
     <string name="piko_download_all_count">Download all (%1$d)</string>
