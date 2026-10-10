@@ -10,6 +10,7 @@ Opinionated and lean [Piko](https://github.com/crimera/piko) patch bundle for In
 - Hide ads
 - Media downloads
 - Ghost mode
+- Disable swipe to camera
 
 # Compatibility
 - 449.0.0.52.84 (385511871)
