@@ -1,3 +1,9 @@
+## [0.2.0-dev.1](https://github.com/crimera/piko-ig-lite/compare/v0.1.0...v0.2.0-dev.1) (2026-10-10)
+
+### ✨ New Features
+
+* add disable swipe to camera patch ([68afb8c](https://github.com/crimera/piko-ig-lite/commit/68afb8c9d3b298d85add5bbf120c276a1d9ca8ea))
+
 ## [0.1.0](https://github.com/crimera/piko-ig-lite/compare/v0.0.0...v0.1.0) (2026-10-04)
 
 ### 🐛 Bug Fixes
