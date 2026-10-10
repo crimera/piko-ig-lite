@@ -53,5 +53,7 @@ object Constants {
 
     const val GHOST_DESCRIPTOR = "$PATCHES_DESCRIPTOR/ghost"
 
+    const val SWIPE_CAMERA_DESCRIPTOR = "$PATCHES_DESCRIPTOR/navigation/SwipeCamera"
+
     const val SETTINGS_DESCRIPTOR = "$INTEGRATIONS_PACKAGE/settings"
 }
