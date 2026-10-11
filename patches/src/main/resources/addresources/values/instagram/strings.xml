@@ -31,6 +31,8 @@
     <string name="piko_ig_feed_download_button_summary">Shows a download button beside the save icon on feed posts</string>
     <string name="piko_ig_story_download_button_title">Story download button</string>
     <string name="piko_ig_story_download_button_summary">Shows a download button beside the reply pill on stories</string>
+    <string name="piko_ig_instant_download_button_title">Instant download button</string>
+    <string name="piko_ig_instant_download_button_summary">Shows a download button left of the grid icon on Instants</string>
     <string name="piko_ig_reel_download_button_title">Reels download button</string>
     <string name="piko_ig_reel_download_button_summary">Shows a download button in the reels action column</string>
     <string name="piko_ig_download_sheet_thumbnails_title">Show media thumbnails</string>
