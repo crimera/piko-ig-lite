@@ -1,3 +1,12 @@
+## [0.3.0-dev.1](https://github.com/crimera/piko-ig-lite/compare/v0.2.0...v0.3.0-dev.1) (2026-10-17)
+
+### ✨ New Features
+
+* add AMOLED theme patch ([06d912f](https://github.com/crimera/piko-ig-lite/commit/06d912f69c5127d691268589d90f1db59b3b8055)), closes [#0C1014](https://github.com/crimera/piko-ig-lite/issues/0C1014)
+* add Instants download button ([b77ca8a](https://github.com/crimera/piko-ig-lite/commit/b77ca8a48113801dafb9ea57190c27806f7fc5c5))
+* make AMOLED theme fully toggleable at runtime ([fce765d](https://github.com/crimera/piko-ig-lite/commit/fce765d38adc6ffdf75380a54ac53f19c4eac468)), closes [#0C1014](https://github.com/crimera/piko-ig-lite/issues/0C1014)
+* prompt restart when toggling AMOLED black ([c2cc1a8](https://github.com/crimera/piko-ig-lite/commit/c2cc1a89e648c683ce767ec5ae078ded5c3beb2c))
+
 ## [0.2.0](https://github.com/crimera/piko-ig-lite/compare/v0.1.0...v0.2.0) (2026-10-10)
 
 ### ✨ New Features
