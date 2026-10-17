@@ -55,5 +55,7 @@ object Constants {
 
     const val SWIPE_CAMERA_DESCRIPTOR = "$PATCHES_DESCRIPTOR/navigation/SwipeCamera"
 
+    const val THEME_DESCRIPTOR = "$PATCHES_DESCRIPTOR/theme/AmoledMessages"
+
     const val SETTINGS_DESCRIPTOR = "$INTEGRATIONS_PACKAGE/settings"
 }

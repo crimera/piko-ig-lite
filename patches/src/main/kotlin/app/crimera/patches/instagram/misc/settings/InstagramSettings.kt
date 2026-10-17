@@ -63,6 +63,15 @@ internal object Categories {
             iconResourceName = "instagram_camera_outline_24",
             order = 400,
         )
+
+    val THEME =
+        SettingsCategory(
+            id = "instagram.theme",
+            titleResourceName = "piko_ig_category_theme_title",
+            summaryResourceName = "piko_ig_category_theme_summary",
+            iconResourceName = "instagram_moon_outline_24",
+            order = 500,
+        )
 }
 
 internal fun BytecodePatchBuilder.instagramToggle(

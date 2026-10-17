@@ -55,6 +55,10 @@
     <string name="piko_ig_category_navigation_summary">Swipes and gestures on the home feed</string>
     <string name="piko_ig_swipe_camera_title">Disable swipe to camera</string>
     <string name="piko_ig_swipe_camera_summary">A swipe right on the home feed no longer opens the camera. The camera button still works</string>
+    <string name="piko_ig_category_theme_title">Theme</string>
+    <string name="piko_ig_category_theme_summary">Colours and dark mode</string>
+    <string name="piko_ig_amoled_black_title">AMOLED black</string>
+    <string name="piko_ig_amoled_black_summary">Pure black instead of dark grey in Messages and other newer screens. Restart Instagram to apply</string>
 
     <!-- Download sheet and toasts. -->
     <string name="piko_copied_media_link">Copied media link</string>

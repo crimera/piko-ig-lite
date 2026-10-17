@@ -26,6 +26,7 @@ public final class Settings {
     public static final String GHOST_INSTANTS = "instagram.ghost.instants";
     public static final String GHOST_MESSAGES = "instagram.ghost.messages";
     public static final String SWIPE_CAMERA_GESTURE = "instagram.navigation.swipe_camera";
+    public static final String AMOLED_BLACK = "instagram.theme.amoled_black";
 
     private Settings() {
     }
@@ -80,5 +81,9 @@ public final class Settings {
 
     public static boolean swipeCameraGesture() {
         return SettingsRegistry.getBooleanOrDefault(SWIPE_CAMERA_GESTURE, true);
+    }
+
+    public static boolean amoledBlack() {
+        return SettingsRegistry.getBooleanOrDefault(AMOLED_BLACK, true);
     }
 }
