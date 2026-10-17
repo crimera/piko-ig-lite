@@ -15,14 +15,15 @@ import app.crimera.patches.instagram.misc.settings.instagramToggle
 import app.crimera.patches.instagram.utils.Constants.COMPATIBILITY_INSTAGRAM
 import app.crimera.patches.instagram.utils.Constants.THEME_DESCRIPTOR
 import app.crimera.patches.settings.settingStrings
+import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.patch.BytecodePatchContext
 import app.morphe.patcher.patch.PatchException
-import app.morphe.patcher.patch.ResourcePatchContext
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
+import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
+import app.morphe.patches.all.misc.resources.ResourceType
+import app.morphe.patches.all.misc.resources.getResourceId
 import app.morphe.patches.all.misc.resources.resourceMappingPatch
-import app.morphe.util.ResourceGroup
-import app.morphe.util.copyResources
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.builder.BuilderInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
@@ -32,93 +33,52 @@ import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.WideLiteralInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
+import com.android.tools.smali.dexlib2.iface.reference.MethodReference
+import com.android.tools.smali.dexlib2.iface.reference.TypeReference
 import org.w3c.dom.Element
 import org.w3c.dom.NodeList
 
 private const val STYLES_FILE = "res/values/styles.xml"
-
-/**
- * The dark Prism styles that paint the feed, header, tab bar and status bar. Each sets the primary background and
- * the status bar to `igds_prism_black` (#0C1014), a blue-grey near black. Styles are matched by name because
- * resource ids change between releases.
- */
-private val PRISM_DARK_STYLES = listOf("IgdsPrismSemanticColorsExperimentDark", "IgdsPrismGrayOverridesDark")
-
-/** Items in those styles that paint the background. Tab bars and the action bar follow the primary background. */
-private val BACKGROUND_ITEMS = listOf("igds_color_primary_background", "status_bar_background")
-
-private const val BLUE_GREY_BLACK = "@color/igds_prism_black"
-private const val PURE_BLACK = "@color/bds_black"
-
-/**
- * Palette colour that views and code use directly, outside the styles above. Those references do not follow a style
- * item, so the colour gets a night value of black instead. Colour literals in code are not affected.
- */
-private const val PALETTE_COLOR = "igds_prism_black"
-private const val PALETTE_NIGHT_VALUE = "#000000"
-private const val NIGHT_COLORS = "values-night/colors.xml"
-private const val BUNDLED_THEME_DIR = "instagram/theme"
+private const val PRIMARY_BACKGROUND_ATTRIBUTE = "igds_color_primary_background"
+private const val STATUS_BAR_BACKGROUND_ATTRIBUTE = "status_bar_background"
+private const val BDS_BLACK_COLOR = "bds_black"
+private const val OVERLAY_STYLE_NAME = "PikoAmoledOverlay"
+private const val GRAY_OVERRIDES_STYLE_NAME = "IgdsPrismGrayOverrides"
+private const val PRISM_DARK_STYLE_NAME = "IgdsPrismSemanticColorsExperimentDark"
+private const val CONTEXT_DESCRIPTOR = "Landroid/content/Context;"
+private const val CONTEXT_THEME_DESCRIPTOR = "Landroid/content/res/Resources\$Theme;"
+private const val CONTEXT_THEME_WRAPPER_DESCRIPTOR = "Landroid/view/ContextThemeWrapper;"
+private const val APPLY_OVERLAY_DESCRIPTOR =
+    "Lapp/morphe/extension/instagram/patches/theme/AmoledTheme;->applyOverlay($CONTEXT_DESCRIPTOR)V"
 private const val BASE_PRISM_COLORS_DESCRIPTOR = "Lcom/instagram/compose/core/theme/BasePrismColors;"
 private const val BASE_PRISM_COLORS_V2_DESCRIPTOR = "Lcom/instagram/compose/core/theme/BasePrismColorsV2;"
 private const val BASE_PRISM_BLACK_LITERAL = 0x00000000ff0c1014L
 private const val COMPOSE_COLOR_SHIFT = 0x20L
 
-/**
- * Makes the dark theme background pure black (#000000) for OLED screens.
- *
- * Instagram paints the feed, header, tab bar and status bar from the `igds_color_primary_background` attribute, so
- * changing that item (and the status bar item) in the Prism dark styles changes all of them. Code and views that read
- * `igds_prism_black` directly are covered by a night value for that colour. Light mode keeps its colour.
- *
- * The patch fails closed. Each style must exist exactly once, and each item must still read `@color/igds_prism_black`.
- * A release that renames or repaints these fails the patch rather than being skipped.
- */
-/** Resource edits behind the AMOLED theme: the dark Prism styles and the dark-mode palette colour. */
+/** Adds the runtime-applied overlay style; the original Prism styles and palette remain unchanged. */
 @Suppress("unused")
 internal val amoledThemeResources =
     resourcePatch(
-        description = "Makes the dark theme background pure black (#000000) instead of blue-grey.",
+        description = "Adds a pure-black overlay style for dark-mode View surfaces.",
     ) {
         compatibleWith(COMPATIBILITY_INSTAGRAM)
 
         execute {
             document(STYLES_FILE).use { document ->
-                val styles = document.getElementsByTagName("style").elements()
-                PRISM_DARK_STYLES.forEach { styleName ->
-                    val style =
-                        requireExactlyOne(
-                            "style $styleName in $STYLES_FILE",
-                            styles.filter { element -> element.getAttribute("name") == styleName },
-                            describe = { element -> element.getAttribute("name") },
-                        )
-                    BACKGROUND_ITEMS.forEach { itemName ->
-                        val item =
-                            requireExactlyOne(
-                                "$itemName item in $styleName",
-                                style.childElements("item").filter { element -> element.getAttribute("name") == itemName },
-                                describe = { element -> element.textContent },
-                            )
-                        val value = item.textContent.trim()
-                        if (value != BLUE_GREY_BLACK) {
-                            throw PatchException("$itemName in $styleName is $value, expected $BLUE_GREY_BLACK")
-                        }
-                        item.textContent = PURE_BLACK
-                    }
-                }
+                addAmoledOverlayStyle(document.documentElement)
             }
-            blackenNightPalette()
         }
     }
 
 /**
- * The AMOLED theme as the user selects it. Its resource edits are a dependency. The toggle controls the Compose
- * palette hook; the style and night-palette edits remain in the APK whenever this patch is selected.
+ * The runtime toggle controls both the Compose palette hooks and the View-theme overlay. Original Prism resource
+ * values remain unchanged, so disabling the setting and restarting restores Instagram's stock colors.
  */
 @Suppress("unused")
 val amoledThemePatch =
     bytecodePatch(
         name = "AMOLED theme",
-        description = "Makes the dark theme background pure black (#000000) instead of blue-grey, for OLED screens.",
+        description = "Uses pure black for dark-mode Compose and View surfaces when enabled.",
         default = true,
     ) {
         compatibleWith(COMPATIBILITY_INSTAGRAM)
@@ -133,10 +93,124 @@ val amoledThemePatch =
         )
 
         execute {
+            validateAmoledOverlayResources()
             blackenComposePalette(BASE_PRISM_COLORS_DESCRIPTOR, "BLACK")
             blackenComposePalette(BASE_PRISM_COLORS_V2_DESCRIPTOR, "GRAY_1600")
+            hookViewThemeOverlay()
         }
     }
+
+private fun addAmoledOverlayStyle(root: Element) {
+    val existingStyles =
+        root.getElementsByTagName("style").elements().filter { style ->
+            style.getAttribute("name") == OVERLAY_STYLE_NAME
+        }
+    if (existingStyles.isNotEmpty()) {
+        fail("Style $OVERLAY_STYLE_NAME already exists in $STYLES_FILE")
+    }
+
+    val document = root.ownerDocument
+    val style = document.createElement("style")
+    style.setAttribute("name", OVERLAY_STYLE_NAME)
+    listOf(PRIMARY_BACKGROUND_ATTRIBUTE, STATUS_BAR_BACKGROUND_ATTRIBUTE).forEach { attributeName ->
+        val item = document.createElement("item")
+        item.setAttribute("name", attributeName)
+        item.textContent = "@color/$BDS_BLACK_COLOR"
+        style.appendChild(item)
+    }
+    root.appendChild(style)
+}
+
+context(_: BytecodePatchContext)
+private fun validateAmoledOverlayResources() {
+    requireMappedResource(ResourceType.ATTR, "attribute", PRIMARY_BACKGROUND_ATTRIBUTE)
+    requireMappedResource(ResourceType.ATTR, "attribute", STATUS_BAR_BACKGROUND_ATTRIBUTE)
+    requireMappedResource(ResourceType.COLOR, "color", BDS_BLACK_COLOR)
+}
+
+context(_: BytecodePatchContext)
+private fun requireMappedResource(
+    type: ResourceType,
+    typeName: String,
+    name: String,
+): Long {
+    val resourceId = getResourceId(type, name)
+    if (resourceId == 0L) fail("Missing $typeName resource $name")
+    return resourceId
+}
+
+context(patchContext: BytecodePatchContext)
+private fun hookViewThemeOverlay() {
+    val grayOverridesStyleId =
+        requireMappedResource(ResourceType.STYLE, "style", GRAY_OVERRIDES_STYLE_NAME)
+    val contextVoidMethods =
+        Fingerprint(
+            parameters = listOf(CONTEXT_DESCRIPTOR),
+            returnType = "V",
+        ).matchAll().map { match -> match.method }
+    val methodsWithGrayOverridesStyle =
+        contextVoidMethods.filter { method -> method.containsLiteral(grayOverridesStyleId) }
+    val grayOverridesApplier =
+        requireExactlyOne(
+            "Context method applying $GRAY_OVERRIDES_STYLE_NAME (resource id=0x${grayOverridesStyleId.toString(16)}, " +
+                "signature matches=${contextVoidMethods.size}, literal matches=${methodsWithGrayOverridesStyle.size})",
+            methodsWithGrayOverridesStyle.filter { method ->
+                method.containsInvoke { reference ->
+                    reference.definingClass == CONTEXT_THEME_DESCRIPTOR &&
+                        reference.name == "applyStyle" &&
+                        reference.parameterTypes.map { type -> type.toString() } == listOf("I", "Z") &&
+                        reference.returnType == "V"
+                }
+            },
+        )
+    val grayOverridesInstructions = grayOverridesApplier.instructionsOrThrow("$GRAY_OVERRIDES_STYLE_NAME applier")
+    val grayOverridesReturn =
+        requireExactlyOne(
+            "$GRAY_OVERRIDES_STYLE_NAME applier return-void",
+            grayOverridesInstructions.indices.filter { index ->
+                grayOverridesInstructions[index].opcode == Opcode.RETURN_VOID
+            },
+        )
+    val contextRegister = grayOverridesApplier.contextParameterRegister()
+    val applyOverlay = methodReference(APPLY_OVERLAY_DESCRIPTOR)
+    grayOverridesApplier.insertHook(index = grayOverridesReturn, relocateBranchTargets = true) {
+        invokeStatic(applyOverlay, contextRegister)
+    }
+
+    val prismDarkStyleId =
+        requireMappedResource(ResourceType.STYLE, "style", PRISM_DARK_STYLE_NAME)
+    val contextReturningMethods =
+        Fingerprint(
+            parameters = listOf(CONTEXT_DESCRIPTOR),
+            returnType = CONTEXT_DESCRIPTOR,
+        ).matchAll().map { match -> match.method }
+    val methodsWithPrismDarkStyle =
+        contextReturningMethods.filter { method -> method.containsLiteral(prismDarkStyleId) }
+    val darkContextWrapper =
+        requireExactlyOne(
+            "Context method wrapping with $PRISM_DARK_STYLE_NAME (resource id=0x${prismDarkStyleId.toString(16)}, " +
+                "signature matches=${contextReturningMethods.size}, literal matches=${methodsWithPrismDarkStyle.size})",
+            methodsWithPrismDarkStyle.filter { method ->
+                method.implementation?.instructions?.any { instruction ->
+                    instruction.isNewInstanceOf(CONTEXT_THEME_WRAPPER_DESCRIPTOR)
+                } == true
+            },
+        )
+    val darkContextInstructions = darkContextWrapper.instructionsOrThrow("$PRISM_DARK_STYLE_NAME context wrapper")
+    val contextReturns =
+        darkContextInstructions.indices.filter { index ->
+            darkContextInstructions[index].opcode == Opcode.RETURN_OBJECT
+        }
+    if (contextReturns.isEmpty()) fail("$PRISM_DARK_STYLE_NAME context wrapper has no return-object")
+    contextReturns.sortedDescending().forEach { index ->
+        val returnedContext =
+            (darkContextInstructions[index] as? OneRegisterInstruction)?.registerA
+                ?: fail("$PRISM_DARK_STYLE_NAME context wrapper return-object has no register")
+        darkContextWrapper.insertHook(index = index, relocateBranchTargets = true) {
+            invokeStatic(applyOverlay, returnedContext)
+        }
+    }
+}
 
 /** Hooks an exact palette value that supplies the Compose near-black to the theme. */
 context(patchContext: BytecodePatchContext)
@@ -247,38 +321,39 @@ private fun List<BuilderInstruction>.anyWideRegisterDefinition(
 private fun Instruction.fieldReference(): FieldReference? =
     (this as? ReferenceInstruction)?.reference as? FieldReference
 
+private fun Instruction.isNewInstanceOf(descriptor: String): Boolean =
+    opcode == Opcode.NEW_INSTANCE &&
+        ((this as? ReferenceInstruction)?.reference as? TypeReference)?.type == descriptor
+
+private fun Instruction.matchesLiteral(value: Long): Boolean =
+    when (this) {
+        is NarrowLiteralInstruction -> narrowLiteral.toLong() == value
+        is WideLiteralInstruction -> wideLiteral == value
+        else -> false
+    }
+
+private fun MutableMethod.containsLiteral(value: Long): Boolean =
+    implementation?.instructions?.any { instruction -> instruction.matchesLiteral(value) } == true
+
+private fun MutableMethod.containsInvoke(matches: (MethodReference) -> Boolean): Boolean =
+    implementation?.instructions?.any { instruction ->
+        ((instruction as? ReferenceInstruction)?.reference as? MethodReference)?.let(matches) == true
+    } == true
+
+private fun MutableMethod.contextParameterRegister(): Int {
+    val methodImplementation = implementation ?: fail("$this has no implementation")
+    val parameters = parameterTypes.map { type -> type.toString() }
+    if (parameters != listOf(CONTEXT_DESCRIPTOR)) {
+        fail("$this does not have exactly one Context parameter: $parameters")
+    }
+    val register = methodImplementation.registerCount - 1
+    if (register < 0) fail("$this has no register for its Context parameter")
+    return register
+}
+
+private fun MutableMethod.instructionsOrThrow(label: String): List<BuilderInstruction> =
+    implementation?.instructions?.toList() ?: fail("$label has no implementation")
+
 private fun fail(message: String): Nothing = throw PatchException(message)
 
 private fun NodeList.elements(): List<Element> = (0 until length).mapNotNull { index -> item(index) as? Element }
-
-private fun Element.childElements(tagName: String): List<Element> =
-    childNodes.elements().filter { element -> element.tagName == tagName }
-
-/**
- * Gives [PALETTE_COLOR] a night value. Edits the decoded `values-night/colors.xml` when Instagram already ships one,
- * which keeps its other night colours. Otherwise copies the bundled file, which only holds this colour.
- */
-private fun ResourcePatchContext.blackenNightPalette() {
-    if (get("res").resolve(NIGHT_COLORS).exists()) {
-        document("res/$NIGHT_COLORS").use { document -> setNightPaletteColor(document.documentElement) }
-    } else {
-        copyResources(BUNDLED_THEME_DIR, ResourceGroup("values-night", "colors.xml"))
-    }
-}
-
-private fun setNightPaletteColor(root: Element) {
-    val existing =
-        root.getElementsByTagName("color").elements().filter { element ->
-            element.getAttribute("name") == PALETTE_COLOR
-        }
-    val color =
-        if (existing.isEmpty()) {
-            root.ownerDocument.createElement("color").also { element ->
-                element.setAttribute("name", PALETTE_COLOR)
-                root.appendChild(element)
-            }
-        } else {
-            requireExactlyOne("night value of $PALETTE_COLOR", existing)
-        }
-    color.textContent = PALETTE_NIGHT_VALUE
-}
