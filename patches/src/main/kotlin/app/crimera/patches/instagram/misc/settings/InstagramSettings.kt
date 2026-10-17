@@ -80,5 +80,6 @@ internal fun BytecodePatchBuilder.instagramToggle(
     strings: SettingStrings,
     order: Int = 0,
     defaultValue: Boolean,
+    rebootApp: Boolean = false,
 ): ToggleSettingDefinition =
-    settingsToggle(INSTAGRAM_SETTINGS_CONFIG, id, category, strings, order, defaultValue)
+    settingsToggle(INSTAGRAM_SETTINGS_CONFIG, id, category, strings, order, defaultValue, rebootApp = rebootApp)

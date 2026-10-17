@@ -90,6 +90,7 @@ val amoledThemePatch =
             strings = settingStrings("piko_ig_amoled_black"),
             order = 100,
             defaultValue = true,
+            rebootApp = true,
         )
 
         execute {
