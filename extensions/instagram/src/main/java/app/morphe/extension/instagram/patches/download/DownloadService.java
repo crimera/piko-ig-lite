@@ -93,10 +93,25 @@ public final class DownloadService {
                     CHANNEL_ID,
                     CHANNEL_NAME,
                     new EnglishNotificationTexts(),
-                    new PersistentDownloadLog(context, LOG, InstagramLogger::isLoggingEnabled));
+                    gatedDownloadLog(context));
         } catch (RuntimeException e) {
             InstagramLogger.printException(() -> "Could not install the downloader", e);
         }
+    }
+
+    private static DownloadLog gatedDownloadLog(Context context) {
+        DownloadLog persistentLog = new PersistentDownloadLog(context, LOG);
+        return new DownloadLog() {
+            @Override
+            public void info(Supplier<String> message) {
+                if (InstagramLogger.isLoggingEnabled()) persistentLog.info(message);
+            }
+
+            @Override
+            public void error(Supplier<String> message, Throwable cause) {
+                if (InstagramLogger.isLoggingEnabled()) persistentLog.error(message, cause);
+            }
+        };
     }
 
     /**
