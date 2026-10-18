@@ -1,3 +1,15 @@
+## [0.3.0-dev.3](https://github.com/crimera/piko-ig-lite/compare/v0.3.0-dev.2...v0.3.0-dev.3) (2026-10-18)
+
+### 🐛 Bug Fixes
+
+* **instagram:** gate downloader logs in consumer ([da873e9](https://github.com/crimera/piko-ig-lite/commit/da873e9df6336b6b1a9d649944ddbfc0e76c01e7))
+
+### ✨ New Features
+
+* **instagram:** add reusable logging toggle ([107b4d5](https://github.com/crimera/piko-ig-lite/commit/107b4d597350a185529caf41434e49f3a2982ba2))
+* **instagram:** blacken elevated, media and clips tab bar surfaces in AMOLED overlay ([10e1c26](https://github.com/crimera/piko-ig-lite/commit/10e1c26dff5b52b6842e50c9a6132a241d39ba58))
+* **instagram:** persist downloader diagnostics ([44cb398](https://github.com/crimera/piko-ig-lite/commit/44cb3989fc37d731dae1f98e4cdd8f59bed52742))
+
 ## [0.3.0-dev.2](https://github.com/crimera/piko-ig-lite/compare/v0.3.0-dev.1...v0.3.0-dev.2) (2026-10-18)
 
 ### ✨ New Features
