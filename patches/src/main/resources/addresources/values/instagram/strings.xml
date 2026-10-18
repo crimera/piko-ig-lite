@@ -60,6 +60,13 @@
     <string name="piko_ig_amoled_black_title">AMOLED black</string>
     <string name="piko_ig_amoled_black_summary">Pure black instead of dark grey in dark mode. Restart Instagram to apply</string>
 
+    <string name="piko_ig_category_advanced_title">Advanced</string>
+    <string name="piko_ig_category_advanced_summary">Developer and diagnostic options</string>
+    <string name="piko_ig_group_debug_tools_title">Developer tools</string>
+    <string name="piko_ig_group_debug_tools_summary">Diagnostics for troubleshooting</string>
+    <string name="piko_ig_logging_title">Enable logging</string>
+    <string name="piko_ig_logging_summary">Write diagnostic details to logcat and Downloads/Piko-Downloader.txt</string>
+
     <!-- Download sheet and toasts. -->
     <string name="piko_copied_media_link">Copied media link</string>
     <string name="piko_download_all_count">Download all (%1$d)</string>

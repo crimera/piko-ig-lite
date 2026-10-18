@@ -93,7 +93,7 @@ public final class DownloadService {
                     CHANNEL_ID,
                     CHANNEL_NAME,
                     new EnglishNotificationTexts(),
-                    new PersistentDownloadLog(context, LOG));
+                    new PersistentDownloadLog(context, LOG, InstagramLogger::isLoggingEnabled));
         } catch (RuntimeException e) {
             InstagramLogger.printException(() -> "Could not install the downloader", e);
         }

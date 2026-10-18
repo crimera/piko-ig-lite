@@ -31,6 +31,7 @@ public final class InstagramSettingsHost {
     public static void install() {
         SettingsHost.install(SettingsHost.builder(InstagramLogger.logger(), STRING_PREFIX)
                 .backupFilePrefix(BACKUP_FILE_PREFIX)
+                .contributor(InstagramBuiltInSettings::register)
                 .build());
     }
 
