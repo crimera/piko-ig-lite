@@ -9,6 +9,8 @@ import app.morphe.extension.crimera.logging.LogSanitizer;
 import app.morphe.extension.crimera.logging.PikoLogger;
 import app.morphe.extension.crimera.settings.SettingsRegistry;
 import app.morphe.extension.shared.Logger;
+import app.morphe.extension.shared.settings.BooleanSetting;
+import app.morphe.extension.shared.settings.Setting;
 
 /**
  * Instagram binding of the shared {@link PikoLogger}. Morphe's info and exception log methods are
@@ -18,7 +20,9 @@ import app.morphe.extension.shared.Logger;
  * so the capture switch is off.
  */
 public final class InstagramLogger {
-    private static final String DEBUG_SETTING_ID = "instagram.debug";
+    public static final String LOGGING_SETTING_ID = "instagram.debug";
+
+    private static volatile Setting<?> cachedLoggingSetting;
 
     private static final PikoLogger LOGGER = new PikoLogger(
             InstagramLogger::isLoggingEnabled,
@@ -35,13 +39,23 @@ public final class InstagramLogger {
     }
 
     /**
-     * Diagnostics are opt-in and no setting enables them yet, so this stays off unless the registry
-     * holds an {@code instagram.debug} toggle. Anything unexpected, such as a read before the
-     * registry exists, also reads as off.
+     * Diagnostics are opt-in through the built-in {@code instagram.debug} toggle; unexpected
+     * reads before the settings registry is ready fail closed.
      */
     public static boolean isLoggingEnabled() {
+        Setting<?> cached = cachedLoggingSetting;
+        if (cached instanceof BooleanSetting booleanSetting) {
+            try {
+                return booleanSetting.get();
+            } catch (RuntimeException ignored) {
+            }
+        }
+
         try {
-            return SettingsRegistry.getBooleanOrDefault(DEBUG_SETTING_ID, false);
+            boolean enabled = SettingsRegistry.getBooleanOrDefault(LOGGING_SETTING_ID, false);
+            Setting<?> resolved = SettingsRegistry.settingOrNull(LOGGING_SETTING_ID);
+            if (resolved instanceof BooleanSetting) cachedLoggingSetting = resolved;
+            return enabled;
         } catch (Throwable ignored) {
             return false;
         }

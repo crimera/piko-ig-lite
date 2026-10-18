@@ -22,6 +22,13 @@ object Constants {
                 listOf(
                     // Stable
                     AppTarget(
+                        version = "451.0.0.53.80",
+                        versionCodes =
+                            mapOf(
+                                ARM64_V8A to 385713073,
+                            ),
+                    ),
+                    AppTarget(
                         version = "449.0.0.52.84",
                         versionCodes =
                             mapOf(
@@ -54,6 +61,8 @@ object Constants {
     const val GHOST_DESCRIPTOR = "$PATCHES_DESCRIPTOR/ghost"
 
     const val SWIPE_CAMERA_DESCRIPTOR = "$PATCHES_DESCRIPTOR/navigation/SwipeCamera"
+
+    const val THEME_DESCRIPTOR = "$PATCHES_DESCRIPTOR/theme/AmoledMessages"
 
     const val SETTINGS_DESCRIPTOR = "$INTEGRATIONS_PACKAGE/settings"
 }

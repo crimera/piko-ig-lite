@@ -145,6 +145,7 @@ val downloadsPatch =
         compatibleWith(COMPATIBILITY_INSTAGRAM)
         dependsOn(
             storyDownloadPatch,
+            instantDownloadPatch,
             reelDownloadPatch,
             sharedExtensionPatch,
             mediaBridgesPatch,

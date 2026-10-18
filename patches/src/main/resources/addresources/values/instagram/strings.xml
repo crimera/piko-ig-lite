@@ -31,6 +31,8 @@
     <string name="piko_ig_feed_download_button_summary">Shows a download button beside the save icon on feed posts</string>
     <string name="piko_ig_story_download_button_title">Story download button</string>
     <string name="piko_ig_story_download_button_summary">Shows a download button beside the reply pill on stories</string>
+    <string name="piko_ig_instant_download_button_title">Instant download button</string>
+    <string name="piko_ig_instant_download_button_summary">Shows a download button left of the grid icon on Instants</string>
     <string name="piko_ig_reel_download_button_title">Reels download button</string>
     <string name="piko_ig_reel_download_button_summary">Shows a download button in the reels action column</string>
     <string name="piko_ig_download_sheet_thumbnails_title">Show media thumbnails</string>
@@ -53,6 +55,17 @@
     <string name="piko_ig_category_navigation_summary">Swipes and gestures on the home feed</string>
     <string name="piko_ig_swipe_camera_title">Disable swipe to camera</string>
     <string name="piko_ig_swipe_camera_summary">A swipe right on the home feed no longer opens the camera. The camera button still works</string>
+    <string name="piko_ig_category_theme_title">Theme</string>
+    <string name="piko_ig_category_theme_summary">Colours and dark mode</string>
+    <string name="piko_ig_amoled_black_title">AMOLED black</string>
+    <string name="piko_ig_amoled_black_summary">Pure black instead of dark grey in dark mode. Restart Instagram to apply</string>
+
+    <string name="piko_ig_category_advanced_title">Advanced</string>
+    <string name="piko_ig_category_advanced_summary">Developer and diagnostic options</string>
+    <string name="piko_ig_group_debug_tools_title">Developer tools</string>
+    <string name="piko_ig_group_debug_tools_summary">Diagnostics for troubleshooting</string>
+    <string name="piko_ig_logging_title">Enable logging</string>
+    <string name="piko_ig_logging_summary">Write diagnostic details to logcat and Downloads/Piko-Downloader.txt</string>
 
     <!-- Download sheet and toasts. -->
     <string name="piko_copied_media_link">Copied media link</string>

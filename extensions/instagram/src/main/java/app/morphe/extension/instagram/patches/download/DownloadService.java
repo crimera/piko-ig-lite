@@ -13,6 +13,8 @@ import android.os.Looper;
 
 import androidx.annotation.Nullable;
 
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -26,6 +28,7 @@ import app.morphe.extension.crimera.downloader.DownloadEngine;
 import app.morphe.extension.crimera.downloader.EnqueueResult;
 import app.morphe.extension.crimera.downloader.engine.DownloadLog;
 import app.morphe.extension.crimera.downloader.engine.EnglishNotificationTexts;
+import app.morphe.extension.crimera.downloader.engine.PersistentDownloadLog;
 import app.morphe.extension.crimera.downloader.messages.DownloadMessages;
 import app.morphe.extension.crimera.downloader.messages.EnglishDownloadTexts;
 import app.morphe.extension.crimera.downloader.model.BatchResult;
@@ -84,10 +87,31 @@ public final class DownloadService {
     /** Called by the patch at application start. */
     public static void install() {
         try {
-            Downloader.install(Utils.getContext(), CHANNEL_ID, CHANNEL_NAME, new EnglishNotificationTexts(), LOG);
+            Context context = Utils.getContext();
+            Downloader.install(
+                    context,
+                    CHANNEL_ID,
+                    CHANNEL_NAME,
+                    new EnglishNotificationTexts(),
+                    gatedDownloadLog(context));
         } catch (RuntimeException e) {
             InstagramLogger.printException(() -> "Could not install the downloader", e);
         }
+    }
+
+    private static DownloadLog gatedDownloadLog(Context context) {
+        DownloadLog persistentLog = new PersistentDownloadLog(context, LOG);
+        return new DownloadLog() {
+            @Override
+            public void info(Supplier<String> message) {
+                if (InstagramLogger.isLoggingEnabled()) persistentLog.info(message);
+            }
+
+            @Override
+            public void error(Supplier<String> message, Throwable cause) {
+                if (InstagramLogger.isLoggingEnabled()) persistentLog.error(message, cause);
+            }
+        };
     }
 
     /**
@@ -144,6 +168,11 @@ public final class DownloadService {
         }
 
         EnqueueResult result = engine.enqueue(request);
+        final String sourceHost = hostOf(item.url);
+        final int downloadId = result.handle() != null ? result.handle().id() : 0;
+        LOG.info(() -> "Enqueue result state=" + result.state()
+                + (downloadId > 0 ? " download=#" + downloadId : "")
+                + " sourceHost=" + sourceHost);
         if (result.state() == EnqueueState.DESTINATION_LOST) {
             // The folder was deleted or its access revoked: ask for a new one on the next download.
             DownloadFolder.clear(context);
@@ -166,5 +195,13 @@ public final class DownloadService {
     private static String mimeTypeOf(String fileName) {
         String mimeType = URLConnection.guessContentTypeFromName(fileName);
         return mimeType == null ? "application/octet-stream" : mimeType;
+    }
+
+    private static String hostOf(String address) {
+        try {
+            return new URL(address).getHost();
+        } catch (MalformedURLException exception) {
+            return "unknown";
+        }
     }
 }
