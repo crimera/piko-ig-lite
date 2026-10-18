@@ -22,6 +22,13 @@ object Constants {
                 listOf(
                     // Stable
                     AppTarget(
+                        version = "451.0.0.53.80",
+                        versionCodes =
+                            mapOf(
+                                ARM64_V8A to 385713073,
+                            ),
+                    ),
+                    AppTarget(
                         version = "449.0.0.52.84",
                         versionCodes =
                             mapOf(

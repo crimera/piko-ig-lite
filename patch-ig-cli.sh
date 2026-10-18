@@ -44,7 +44,7 @@ if [[ ! -x "$MORPHE_CLI_BIN" ]]; then
   exit 1
 fi
 
-DEFAULT_APK="./apks/448.0.0.52.84.apk"
+DEFAULT_APK="./apks/449.0.0.52.84.apk"
 OUTPUT_APK="${OUTPUT_APK:-$HOME/Downloads/piko-ig-lite-patched-cli.apk}"
 APK="$DEFAULT_APK"
 FLAGS=()
