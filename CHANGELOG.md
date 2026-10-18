@@ -1,3 +1,9 @@
+## [0.3.0-dev.2](https://github.com/crimera/piko-ig-lite/compare/v0.3.0-dev.1...v0.3.0-dev.2) (2026-10-18)
+
+### ✨ New Features
+
+* support Instagram 451.0.0.53.80 ([81c46f1](https://github.com/crimera/piko-ig-lite/commit/81c46f1be99a5d808e514432d54228734b9de61d))
+
 ## [0.3.0-dev.1](https://github.com/crimera/piko-ig-lite/compare/v0.2.0...v0.3.0-dev.1) (2026-10-17)
 
 ### ✨ New Features
