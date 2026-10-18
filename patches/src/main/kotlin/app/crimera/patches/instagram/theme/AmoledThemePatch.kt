@@ -39,8 +39,14 @@ import org.w3c.dom.Element
 import org.w3c.dom.NodeList
 
 private const val STYLES_FILE = "res/values/styles.xml"
-private const val PRIMARY_BACKGROUND_ATTRIBUTE = "igds_color_primary_background"
-private const val STATUS_BAR_BACKGROUND_ATTRIBUTE = "status_bar_background"
+private val AMOLED_OVERLAY_ATTRIBUTES =
+    listOf(
+        "igds_color_primary_background",
+        "status_bar_background",
+        "igds_color_elevated_background",
+        "igds_color_media_background",
+        "igds_color_clips_tab_bar_background",
+    )
 private const val BDS_BLACK_COLOR = "bds_black"
 private const val OVERLAY_STYLE_NAME = "PikoAmoledOverlay"
 private const val GRAY_OVERRIDES_STYLE_NAME = "IgdsPrismGrayOverrides"
@@ -113,7 +119,7 @@ private fun addAmoledOverlayStyle(root: Element) {
     val document = root.ownerDocument
     val style = document.createElement("style")
     style.setAttribute("name", OVERLAY_STYLE_NAME)
-    listOf(PRIMARY_BACKGROUND_ATTRIBUTE, STATUS_BAR_BACKGROUND_ATTRIBUTE).forEach { attributeName ->
+    AMOLED_OVERLAY_ATTRIBUTES.forEach { attributeName ->
         val item = document.createElement("item")
         item.setAttribute("name", attributeName)
         item.textContent = "@color/$BDS_BLACK_COLOR"
@@ -124,8 +130,9 @@ private fun addAmoledOverlayStyle(root: Element) {
 
 context(_: BytecodePatchContext)
 private fun validateAmoledOverlayResources() {
-    requireMappedResource(ResourceType.ATTR, "attribute", PRIMARY_BACKGROUND_ATTRIBUTE)
-    requireMappedResource(ResourceType.ATTR, "attribute", STATUS_BAR_BACKGROUND_ATTRIBUTE)
+    AMOLED_OVERLAY_ATTRIBUTES.forEach { attributeName ->
+        requireMappedResource(ResourceType.ATTR, "attribute", attributeName)
+    }
     requireMappedResource(ResourceType.COLOR, "color", BDS_BLACK_COLOR)
 }
 
