@@ -1,3 +1,9 @@
+## [0.3.1-dev.1](https://github.com/crimera/piko-ig-lite/compare/v0.3.0...v0.3.1-dev.1) (2026-10-20)
+
+### 🐛 Bug Fixes
+
+* **instagram:** repair ghost mode completion and story dispatch ([49889eb](https://github.com/crimera/piko-ig-lite/commit/49889eb2076a647aaea0b8557bb0db7efb91808a))
+
 ## [0.3.0](https://github.com/crimera/piko-ig-lite/compare/v0.2.0...v0.3.0) (2026-10-18)
 
 ### 🐛 Bug Fixes
