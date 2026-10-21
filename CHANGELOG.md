@@ -1,3 +1,9 @@
+## [0.4.0-dev.1](https://github.com/crimera/piko-ig-lite/compare/v0.3.1-dev.2...v0.4.0-dev.1) (2026-10-21)
+
+### ✨ New Features
+
+* Add Instagram 452 compatibility ([2ab7f97](https://github.com/crimera/piko-ig-lite/commit/2ab7f97909f318d98a82cc1826f303c1036a6c6f))
+
 ## [0.3.1-dev.2](https://github.com/crimera/piko-ig-lite/compare/v0.3.1-dev.1...v0.3.1-dev.2) (2026-10-21)
 
 ### 🐛 Bug Fixes
