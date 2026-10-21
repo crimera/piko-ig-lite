@@ -1,3 +1,9 @@
+## [0.3.1-dev.2](https://github.com/crimera/piko-ig-lite/compare/v0.3.1-dev.1...v0.3.1-dev.2) (2026-10-21)
+
+### 🐛 Bug Fixes
+
+* **Downloads:** resolve video predicate and extracted Litho icons on 452 ([c8ab9d3](https://github.com/crimera/piko-ig-lite/commit/c8ab9d3f5c2d23114445ea1cd9589bff35a75e7f))
+
 ## [0.3.1-dev.1](https://github.com/crimera/piko-ig-lite/compare/v0.3.0...v0.3.1-dev.1) (2026-10-20)
 
 ### 🐛 Bug Fixes
