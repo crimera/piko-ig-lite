@@ -1,3 +1,14 @@
+## [0.4.0](https://github.com/crimera/piko-ig-lite/compare/v0.3.0...v0.4.0) (2026-10-21)
+
+### 🐛 Bug Fixes
+
+* **Downloads:** resolve video predicate and extracted Litho icons on 452 ([c8ab9d3](https://github.com/crimera/piko-ig-lite/commit/c8ab9d3f5c2d23114445ea1cd9589bff35a75e7f))
+* **instagram:** repair ghost mode completion and story dispatch ([49889eb](https://github.com/crimera/piko-ig-lite/commit/49889eb2076a647aaea0b8557bb0db7efb91808a))
+
+### ✨ New Features
+
+* Add Instagram 452 compatibility ([2ab7f97](https://github.com/crimera/piko-ig-lite/commit/2ab7f97909f318d98a82cc1826f303c1036a6c6f))
+
 ## [0.4.0-dev.1](https://github.com/crimera/piko-ig-lite/compare/v0.3.1-dev.2...v0.4.0-dev.1) (2026-10-21)
 
 ### ✨ New Features
