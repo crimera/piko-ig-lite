@@ -78,7 +78,10 @@ internal fun injectMediaBridges() {
     val imageInfo = resolvedModelGetter(PandoModel.MEDIA, PandoField.Key(IMAGE_VERSIONS_KEY), IMAGE_INFO_DESCRIPTOR)
     val imageList = imageInfoListMethod()
     val imageListOnInterface = AccessFlags.INTERFACE.isSet(patchContext.classDefBy(imageList.definingClass).accessFlags)
-    val isVideo = mediaMethodAfterAnchor(AslSessionRelatedFingerprint, "video flag", "Z")
+    val isVideo = resolveMediaVideoPredicate(
+        patchContext.classDefBy("Lcom/instagram/creation/riff/mediautil/RiffRemoteMediaHelper;"),
+        patchContext.classDefBy(MEDIA_DESCRIPTOR),
+    )
     val mediaPkId = mediaMethodAfterAnchor(FanClubContentPreviewInteractorImplFingerprint, "media id", STRING_DESCRIPTOR)
     val videoUrl = videoVersionUrlMethod()
 

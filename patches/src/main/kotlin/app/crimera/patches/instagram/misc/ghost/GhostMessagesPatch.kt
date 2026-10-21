@@ -10,7 +10,6 @@ import app.crimera.bytecode.Target
 import app.crimera.bytecode.insertHook
 import app.crimera.bytecode.methodReference
 import app.crimera.patches.common.requireExactlyOne
-import app.crimera.patches.instagram.misc.downloads.INTEGER_DESCRIPTOR
 import app.crimera.patches.instagram.misc.downloads.methodRef
 import app.crimera.patches.instagram.misc.downloads.parameterBlock
 import app.crimera.patches.instagram.misc.downloads.registerOfParameterIndex
@@ -23,14 +22,19 @@ import app.crimera.patches.instagram.utils.Constants.GHOST_DESCRIPTOR
 import app.crimera.patches.settings.settingStrings
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.patch.BytecodePatchContext
+import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.string
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
-import app.morphe.util.getReference
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.ClassDef
 import com.android.tools.smali.dexlib2.iface.Method
-import com.android.tools.smali.dexlib2.iface.reference.FieldReference
+import com.android.tools.smali.dexlib2.iface.instruction.Instruction
+import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+import com.android.tools.smali.dexlib2.iface.reference.MethodReference
+import com.android.tools.smali.dexlib2.iface.reference.StringReference
+import com.android.tools.smali.dexlib2.immutable.reference.ImmutableMethodReference
 
 private const val HIDE_MESSAGE_VIEWS = "$GHOST_DESCRIPTOR/GhostMessages;->hideMessageViews()Z"
 
@@ -41,15 +45,40 @@ private const val VISUAL_ITEM_SEEN = "direct_v2/visual_threads/%s/visual_items/%
 /** Opening a thread tells the sender their message was seen, through this GraphQL mutation. */
 private const val DIRECT_ITEM_SEEN_MUTATION = "IGDirectItemSeenMutation"
 
+private const val STRING_DESCRIPTOR = "Ljava/lang/String;"
+
+/**
+ * The queue's success marker: the string the queue's own completion logs once a mutation succeeds. It appears
+ * in that completion only, on the path a null error takes. It is the anchor for the completion.
+ */
+internal const val QUEUE_SUCCESS_MARKER = "mutation_success"
+
+private val CONST_STRINGS = setOf(Opcode.CONST_STRING, Opcode.CONST_STRING_JUMBO)
+
+private val INVOKES =
+    setOf(
+        Opcode.INVOKE_VIRTUAL,
+        Opcode.INVOKE_VIRTUAL_RANGE,
+        Opcode.INVOKE_DIRECT,
+        Opcode.INVOKE_DIRECT_RANGE,
+        Opcode.INVOKE_STATIC,
+        Opcode.INVOKE_STATIC_RANGE,
+        Opcode.INVOKE_INTERFACE,
+        Opcode.INVOKE_INTERFACE_RANGE,
+    )
+
 /**
  * Stops Instagram from telling the sender that a message was seen.
  *
  * Direct sends nothing from the UI. A viewed message becomes a queued mutation, and a mutation handler
- * (one class per mutation type, all sharing the shape `(context, callback, mutation) -> void`) performs
- * the request and then reports the mutation finished by calling a static `(context, Integer)` completer.
- * Skipping the request alone would leave the mutation queued and retried forever, so the hook does what
- * the handler's tail does and nothing else: when the toggle is on it completes the mutation with the
- * handler's own completer and result constant and returns.
+ * (one class per mutation type, all sharing the shape `(context, callback, mutation) -> void`) builds a request
+ * and enqueues it with its callback. The queue removes the mutation's pending entry, and advances to the next
+ * mutation, when the callback's success completion runs.
+ *
+ * When the toggle is on, the hook invokes that same completion on the handler's callback with a null error and a
+ * null item id, then returns. The completion is the callback implementation that names [QUEUE_SUCCESS_MARKER]
+ * (see [queueCompletion]). A null error takes its success path, and a null item id is safe for the listeners that
+ * read it, which check for null before use.
  *
  * Three mutation types report a message as seen:
  *  - the batched `item_seen` request for disappearing media,
@@ -81,7 +110,14 @@ val ghostMessagesPatch =
             handlers += seenHandlers(VISUAL_ITEM_SEEN, 1..2)
             handlers += seenHandlers(DIRECT_ITEM_SEEN_MUTATION, 1..2)
 
-            handlers.distinctBy { it.toString() }.forEach(::completeInsteadOfSending)
+            // Every selected handler receives the same callback interface, so one queue completion serves all of them.
+            val callbackType =
+                requireExactlyOne(
+                    "callback interface shared by the seen mutation handlers",
+                    handlers.map { handler -> handler.parameterTypes[1].toString() }.distinct(),
+                )
+            val completion = queueCompletion(callbackType)
+            handlers.distinctBy { it.toString() }.forEach { completeInsteadOfSending(it, completion) }
         }
     }
 
@@ -133,36 +169,146 @@ private fun handlerCalling(
     ).toMutable("mutation handler of \"$anchor\"")
 }
 
-/** Makes [handler] complete its mutation without sending the request when the toggle is on. */
-private fun completeInsteadOfSending(handler: MutableMethod) {
-    val contextType = handler.parameterTypes[0].toString()
-    val instructions = handler.implementation?.instructions?.toList().orEmpty()
+/** What the completion search reads from one method: its signature, and whether it names the marker or calls a helper that does. */
+internal data class MethodFacts(
+    val name: String,
+    val parameterTypes: List<String>,
+    val returnType: String,
+    val namesMarker: Boolean,
+    val callsMarkerHelper: Boolean,
+)
 
-    // The tail of every handler is `completer(context, RESULT)`; both pieces come from the handler itself.
-    val completer =
-        requireExactlyOne(
-            "mutation completer of $handler",
-            instructions
-                .mapNotNull { instruction ->
-                    if (instruction.opcode != Opcode.INVOKE_STATIC && instruction.opcode != Opcode.INVOKE_STATIC_RANGE) {
-                        return@mapNotNull null
-                    }
-                    instruction.methodRef()?.takeIf {
-                        it.returnType == "V" && it.parameterTypes.map { type -> type.toString() } == listOf(contextType, INTEGER_DESCRIPTOR)
-                    }
-                }.distinctBy { it.toString() },
-        )
-    val result =
-        requireExactlyOne(
-            "mutation result constant of $handler",
-            instructions
-                .mapNotNull { instruction ->
-                    if (instruction.opcode != Opcode.SGET_OBJECT) return@mapNotNull null
-                    instruction.getReference<FieldReference>()?.takeIf { it.type == INTEGER_DESCRIPTOR }
-                }.distinctBy { it.toString() },
-        )
+/** A class with the interfaces it implements and the facts of its methods. */
+internal class ClassFacts(
+    val type: String,
+    val interfaces: Set<String>,
+    val methods: List<MethodFacts>,
+)
 
-    val contextRegister = handler.registerOfParameterIndex(0)
+/**
+ * The queue's completion for [callbackType]: the one method of a class implementing that interface that names
+ * [QUEUE_SUCCESS_MARKER], directly or in one helper it calls. The method must be a method of the interface, must take
+ * an object error and a `String` item id, and must return void. Anything else fails closed.
+ */
+internal fun queueCompletionOf(
+    callbackType: String,
+    interfaceMethods: List<MethodFacts>,
+    classes: List<ClassFacts>,
+): MethodReference {
+    val candidates =
+        classes.filter { callbackType in it.interfaces }.flatMap { implementer ->
+            implementer.methods.filter { it.namesMarker || it.callsMarkerHelper }.map { implementer.type to it }
+        }
+    val (implementer, method) =
+        requireExactlyOne(
+            "queue completion of $callbackType naming \"$QUEUE_SUCCESS_MARKER\"",
+            candidates,
+            describe = { (type, candidate) -> "$type.${candidate.name}" },
+        )
+    val isInterfaceMethod =
+        interfaceMethods.any { signature ->
+            signature.name == method.name &&
+                signature.parameterTypes == method.parameterTypes &&
+                signature.returnType == method.returnType
+        }
+    if (!isInterfaceMethod) {
+        throw PatchException("$implementer.${method.name} is not a method of $callbackType")
+    }
+    val takesErrorAndItem =
+        method.parameterTypes.size == 2 &&
+            method.parameterTypes[0].startsWith("L") &&
+            method.parameterTypes[1] == STRING_DESCRIPTOR
+    if (method.returnType != "V" || !takesErrorAndItem) {
+        throw PatchException("completion ${method.name} of $callbackType must take an error and an item id and return void")
+    }
+    return ImmutableMethodReference(callbackType, method.name, method.parameterTypes, method.returnType)
+}
+
+/** Whether a method body loads [QUEUE_SUCCESS_MARKER] as a string constant. */
+internal fun List<Instruction>.namesMarker(): Boolean =
+    any { instruction ->
+        instruction.opcode in CONST_STRINGS &&
+            ((instruction as? ReferenceInstruction)?.reference as? StringReference)?.string == QUEUE_SUCCESS_MARKER
+    }
+
+/** The methods a body invokes. */
+internal fun List<Instruction>.invokedMethods(): List<MethodReference> =
+    mapNotNull { instruction -> if (instruction.opcode in INVOKES) instruction.methodRef() else null }
+
+context(patchContext: BytecodePatchContext)
+private fun requireCallbackInterface(callbackType: String) {
+    if (!AccessFlags.INTERFACE.isSet(patchContext.classDefBy(callbackType).accessFlags)) {
+        throw PatchException("callback $callbackType is not an interface")
+    }
+}
+
+/**
+ * The queue's completion for [callbackType], resolved from the APK. Helpers are read one hop deep: a helper names the
+ * marker when its own body does, and the method calling it is the completion candidate.
+ */
+context(patchContext: BytecodePatchContext)
+private fun queueCompletion(callbackType: String): MethodReference {
+    requireCallbackInterface(callbackType)
+    val interfaceMethods =
+        patchContext
+            .classDefBy(callbackType)
+            .methods
+            .filter { AccessFlags.ABSTRACT.isSet(it.accessFlags) }
+            .map { method -> method.signature() }
+    val implementers = mutableListOf<ClassDef>()
+    patchContext.classDefForEach { classDef ->
+        if (callbackType in classDef.interfaces) implementers.add(classDef)
+    }
+    return queueCompletionOf(callbackType, interfaceMethods, implementers.map { classDef -> classDef.facts() })
+}
+
+context(patchContext: BytecodePatchContext)
+private fun ClassDef.facts(): ClassFacts = ClassFacts(type, interfaces.toSet(), methods.map { method -> method.facts() })
+
+context(patchContext: BytecodePatchContext)
+private fun Method.facts(): MethodFacts {
+    val body = implementation?.instructions?.toList().orEmpty()
+    return MethodFacts(
+        name = name,
+        parameterTypes = parameterTypes.map { it.toString() },
+        returnType = returnType,
+        namesMarker = body.namesMarker(),
+        callsMarkerHelper = body.invokedMethods().any { helper -> helperNamesMarker(helper) },
+    )
+}
+
+/** A method's signature alone, for the interface side of the search. */
+private fun Method.signature(): MethodFacts =
+    MethodFacts(
+        name = name,
+        parameterTypes = parameterTypes.map { it.toString() },
+        returnType = returnType,
+        namesMarker = false,
+        callsMarkerHelper = false,
+    )
+
+/** Whether the helper a body invokes names the marker in its own body, one hop deep. */
+context(patchContext: BytecodePatchContext)
+private fun helperNamesMarker(helper: MethodReference): Boolean {
+    val helperParameters = helper.parameterTypes.map { it.toString() }
+    return patchContext.classDefByOrNull(helper.definingClass)?.methods?.any { method ->
+        method.name == helper.name &&
+            method.parameterTypes.map { it.toString() } == helperParameters &&
+            method.returnType == helper.returnType &&
+            method.implementation?.instructions?.toList().orEmpty().namesMarker()
+    } == true
+}
+
+/**
+ * Makes [handler] invoke [completion] on its callback with a null error and a null item id, then return, when the
+ * toggle is on. The disabled branch runs the original code.
+ */
+private fun completeInsteadOfSending(
+    handler: MutableMethod,
+    completion: MethodReference,
+) {
+    val callbackType = handler.parameterTypes[1].toString()
+    val callbackRegister = handler.registerOfParameterIndex(1)
     handler.insertHook(
         index = 0,
         excludedRegisters = handler.parameterBlock(),
@@ -174,11 +320,13 @@ private fun completeInsteadOfSending(handler: MutableMethod) {
         ifEqz(enabled, Target.Original)
 
         // The handler keeps its arguments in high registers, which 4-bit `invoke` cannot address.
-        val context = scratchRegister()
-        move(context, contextRegister, contextType)
-        val done = scratchRegister()
-        sget(done, result)
-        invokeStatic(methodReference("${completer.definingClass}->${completer.name}($contextType$INTEGER_DESCRIPTOR)V"), context, done)
+        val callback = scratchRegister()
+        move(callback, callbackRegister, callbackType)
+        val error = scratchRegister()
+        constInt(error, 0)
+        val item = scratchRegister()
+        constInt(item, 0)
+        invokeInterface(completion, callback, error, item)
         returnVoid()
     }
 }
