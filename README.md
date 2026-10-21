@@ -14,10 +14,7 @@ Opinionated and lean [Piko](https://github.com/crimera/piko) patch bundle for In
 - Hide feed ads
 - Hide reels and stories ads
 
-# Compatibility
-- 451.0.0.53.80 (385713073)
-- 449.0.0.52.84 (385511871)
-- 448.0.0.52.84 (385412061)
+The patch aims to remain compatible with the latest Instagram version.
 
 # License
 
