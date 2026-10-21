@@ -195,6 +195,13 @@ internal fun injectLithoDownloadButton(
     if (wrapperCall.size != wrapperConstructor.parameterTypes.size + 1) {
         throw PatchException("Unexpected icon wrapper call shape in $builder: $wrapperConstructor with ${wrapperCall.size} registers")
     }
+    if (componentType == wrapperConstructor.definingClass) {
+        injectExtractedLithoDownloadButton(
+            builder, wrapperConstructor, idSetter, descriptionSetter, onClickSetter, longClickSetter,
+            stateType, downloadDrawableId,
+        )
+        return
+    }
     val wrapperFlagSources = sourceMoves(wrapperIndex, wrapperCall.drop(6))
 
     // The component factory takes the wrapper as its second argument and returns the component the
