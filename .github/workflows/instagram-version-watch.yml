@@ -40,17 +40,13 @@ jobs:
         if: steps.watch.outputs.status == 'new'
         env:
           VERSION: ${{ steps.watch.outputs.version }}
-          DECLARED: ${{ steps.watch.outputs.declared }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          APKMIRROR_URL: ${{ steps.watch.outputs.apkmirror_url }}
         run: |
-          title="Instagram $VERSION is available"
+          title="New version detected: $VERSION"
           # Open or closed, one issue per version: closing it means it was seen.
           if gh issue list --repo "$GITHUB_REPOSITORY" --state all --label "$ISSUE_LABEL" --limit 200 --json title --jq '.[].title' | grep -qxF "$title"; then
             echo "An issue for $VERSION already exists."
             exit 0
           fi
           gh label create "$ISSUE_LABEL" --repo "$GITHUB_REPOSITORY" --color 1D76DB --description "New Instagram releases" --force
-          gh issue create --repo "$GITHUB_REPOSITORY" --label "$ISSUE_LABEL" --title "$title" --body "$(printf '%s\n\n%s\n\n%s\n' \
-            "APKPure lists Instagram \`$VERSION\`, newer than the newest declared target \`$DECLARED\` on \`dev\`." \
-            "Nothing was downloaded or patched. To support it, add the APK under \`apks/\`, patch it with \`./patch-ig-cli.sh\`, and add an \`AppTarget\` to \`COMPATIBILITY_INSTAGRAM\`." \
-            "Detected by $RUN_URL")"
+          gh issue create --repo "$GITHUB_REPOSITORY" --label "$ISSUE_LABEL" --title "$title" --body "$APKMIRROR_URL"

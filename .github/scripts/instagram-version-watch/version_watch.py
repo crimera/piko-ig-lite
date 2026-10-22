@@ -23,6 +23,8 @@ CONSTANTS = Path("patches/src/main/kotlin/app/crimera/patches/instagram/utils/Co
 # Instagram versions are five numeric parts, for example 452.0.0.48.64.
 LISTED_RE = re.compile(rb"(?<![\d.])(\d{3}(?:\.\d+){4})(?![\d.])")
 DECLARED_RE = re.compile(r'AppTarget\(\s*version\s*=\s*"(\d+(?:\.\d+){4})"')
+# APKMirror release pages swap the version's dots for dashes: 452.1.0.53.64 -> instagram-452-1-0-53-64-release.
+APKMIRROR_RELEASE_URL = "https://www.apkmirror.com/apk/instagram/instagram-instagram/instagram-{slug}-release/"
 
 
 class WatchError(Exception):
@@ -56,6 +58,11 @@ def newest_listed() -> str:
     return max(listed, key=version_key)
 
 
+def apkmirror_url(version: str) -> str:
+    # A link for a human: APKMirror's Cloudflare blocks the runner, so nothing is fetched.
+    return APKMIRROR_RELEASE_URL.format(slug=version.replace(".", "-"))
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Check APKPure for a newer Instagram release.")
     parser.add_argument("--constants", type=Path, default=CONSTANTS)
@@ -72,7 +79,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"{status}: APKPure lists {listed}; newest declared {declared}")
     if args.github_output:
         with args.github_output.open("a", encoding="utf-8") as file:
-            file.write(f"status={status}\nversion={listed}\ndeclared={declared}\n")
+            file.write(f"status={status}\nversion={listed}\ndeclared={declared}\napkmirror_url={apkmirror_url(listed)}\n")
     return 0
 
 
