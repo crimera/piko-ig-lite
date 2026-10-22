@@ -67,13 +67,17 @@ jobs:
         working-directory: app
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
+      # uv's standalone CPython, as in the reference repo: Cloudflare challenged the setup-python build.
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: '3.13'
+          activate-environment: true
+        env:
+          UV_PYTHON_PREFERENCE: only-managed
 
       - name: Install APKMirror dependencies
-        run: python -m pip install --disable-pip-version-check --requirement tooling/.github/scripts/instagram-version-watch/requirements.txt
+        run: uv pip install --requirement tooling/.github/scripts/instagram-version-watch/requirements.txt
 
       - name: Discover the newest stable ARM64 release
         id: discover
@@ -155,13 +159,17 @@ jobs:
       - name: Cache Gradle
         uses: burrunan/gradle-cache-action@v3
 
+      # uv's standalone CPython, as in the reference repo: Cloudflare challenged the setup-python build.
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: '3.13'
+          activate-environment: true
+        env:
+          UV_PYTHON_PREFERENCE: only-managed
 
       - name: Install APKMirror dependencies
-        run: python -m pip install --disable-pip-version-check --requirement tooling/.github/scripts/instagram-version-watch/requirements.txt
+        run: uv pip install --requirement tooling/.github/scripts/instagram-version-watch/requirements.txt
 
       - name: Build the patch bundle
         working-directory: app

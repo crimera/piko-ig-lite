@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import hashlib
 import re
+import sys
+import time
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -20,6 +22,8 @@ USER_AGENT = (
     "Chrome/126.0.0.0 Safari/537.36"
 )
 TIMEOUT_SECONDS = 60
+CHALLENGE_ATTEMPTS = 3
+CHALLENGE_BACKOFF_SECONDS = 15
 CHUNK_BYTES = 1 << 20
 # A real APKM bundle is tens of MB. Anything smaller is an error page or a truncated transfer.
 MIN_BUNDLE_BYTES = 10 * 1024 * 1024
@@ -32,6 +36,10 @@ _scraper = None
 
 class ApkMirrorError(Exception):
     """A fetch, parse or download step failed. Always fatal for the run."""
+
+
+class ChallengeError(ApkMirrorError):
+    """Cloudflare answered with a challenge instead of the page."""
 
 
 @dataclass(frozen=True)
@@ -72,20 +80,28 @@ def _check(response, url: str, html: bool) -> None:
     # Cloudflare answers a challenge with HTTP 403 plus cf-mitigated, so the challenge is named
     # before the status code is reported.
     if response.headers.get("cf-mitigated") == "challenge":
-        raise ApkMirrorError(f"Cloudflare challenged {url} (HTTP {response.status_code}); no page content")
+        raise ChallengeError(f"Cloudflare challenged {url} (HTTP {response.status_code}); no page content")
     if html and "Just a moment" in response.text[:4096]:
-        raise ApkMirrorError(f"Cloudflare challenge page served for {url}; no page content")
+        raise ChallengeError(f"Cloudflare challenge page served for {url}; no page content")
     if response.status_code != 200:
         raise ApkMirrorError(f"HTTP {response.status_code} for {url}")
 
 
 def _get(url: str):
-    try:
-        response = _session().get(url, timeout=TIMEOUT_SECONDS)
-    except Exception as error:  # requests and cloudscraper raise several unrelated types
-        raise ApkMirrorError(f"request failed: {url}: {error}") from error
-    _check(response, url, html=True)
-    return response
+    # A Cloudflare challenge depends on the runner IP and timing, so it is retried a few times.
+    for attempt in range(1, CHALLENGE_ATTEMPTS + 1):
+        try:
+            response = _session().get(url, timeout=TIMEOUT_SECONDS)
+        except Exception as error:  # requests and cloudscraper raise several unrelated types
+            raise ApkMirrorError(f"request failed: {url}: {error}") from error
+        try:
+            _check(response, url, html=True)
+            return response
+        except ChallengeError as error:
+            if attempt == CHALLENGE_ATTEMPTS:
+                raise
+            print(f"{error}; retrying in {CHALLENGE_BACKOFF_SECONDS * attempt}s", file=sys.stderr)
+            time.sleep(CHALLENGE_BACKOFF_SECONDS * attempt)
 
 
 def get_versions(listing_url: str) -> list[Version]:
