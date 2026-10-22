@@ -1,7 +1,7 @@
 name: Instagram version watch
 
-# Checks APKMirror twice a day for a newer stable Instagram release. When one is found, the dev patch
-# bundle is built, every Instagram patch is applied exclusively to the APKMirror bundle with a pinned
+# Checks Google Play twice a day for a newer stable Instagram release. When one is found, the dev patch
+# bundle is built, every Instagram patch is applied exclusively to the Google Play bundle with a pinned
 # morphe-desktop CLI, and a PR adds the version to COMPATIBILITY_INSTAGRAM. A failure opens one issue.
 # The code under test is dev. The write-scoped jobs run only on the default branch, so tooling from another
 # branch never holds a write token. Operator notes: .github/scripts/instagram-version-watch/README.md.
@@ -45,7 +45,7 @@ jobs:
       source_sha: ${{ steps.source.outputs.sha }}
       status: ${{ steps.discover.outputs.status }}
       version: ${{ steps.discover.outputs.version }}
-      variant_page: ${{ steps.discover.outputs.variant_page }}
+      version_code: ${{ steps.discover.outputs.version_code }}
       proceed: ${{ steps.check.outputs.proceed }}
     steps:
       - name: Check out dev (source data only)
@@ -76,10 +76,10 @@ jobs:
         env:
           UV_PYTHON_PREFERENCE: only-managed
 
-      - name: Install APKMirror dependencies
+      - name: Install Google Play dependencies
         run: uv pip install --requirement tooling/.github/scripts/instagram-version-watch/requirements.txt
 
-      - name: Discover the newest stable ARM64 release
+      - name: Discover the newest Instagram release on Google Play
         id: discover
         run: |
           mkdir -p "$RUNNER_TEMP/vw"
@@ -146,7 +146,7 @@ jobs:
             echo "MPP=$GITHUB_WORKSPACE/app/patches/build/libs/patches-$VER.mpp"
             echo "MORPHE_CLI_JAR=$RUNNER_TEMP/tools/morphe-cli.jar"
             echo "APKEDITOR_JAR=$RUNNER_TEMP/tools/apkeditor.jar"
-            echo "APK=$RUNNER_TEMP/apk/instagram.apkm"
+            echo "APK=$RUNNER_TEMP/apk/instagram.apks"
             echo "OUTPUT_APK=$RUNNER_TEMP/patched/instagram-piko.apk"
           } >> "$GITHUB_ENV"
 
@@ -168,7 +168,7 @@ jobs:
         env:
           UV_PYTHON_PREFERENCE: only-managed
 
-      - name: Install APKMirror dependencies
+      - name: Install Google Play dependencies
         run: uv pip install --requirement tooling/.github/scripts/instagram-version-watch/requirements.txt
 
       - name: Build the patch bundle
@@ -194,10 +194,10 @@ jobs:
           echo "$APKEDITOR_SHA256  $APKEDITOR_JAR" | sha256sum --check --strict -
 
       - id: download
-        name: Download the APKMirror bundle
+        name: Download the Google Play bundle
         env:
-          VARIANT_PAGE: ${{ needs.discover.outputs.variant_page }}
-        run: python "$WATCH" download --variant-page "$VARIANT_PAGE" --version "$VERSION" --out "$APK" --result "$VW/download.json"
+          VERSION_CODE: ${{ needs.discover.outputs.version_code }}
+        run: python "$WATCH" download --version "$VERSION" --version-code "$VERSION_CODE" --out "$APK" --result "$VW/download.json"
 
       - name: Enumerate Instagram patches from the fresh bundle
         run: python "$WATCH" enumerate --cli "$MORPHE_CLI_JAR" --mpp "$MPP" --out "$VW/names.json"
@@ -220,7 +220,7 @@ jobs:
 
       - name: Validate the patch run
         run: |
-          code=$(jq -r '.filename_version_code' "$VW/download.json")
+          code=$(jq -r '.version_code' "$VW/download.json")
           python "$WATCH" validate --names "$VW/names.json" --report "$VW/cli-report.json" --apkeditor "$APKEDITOR_JAR" --apk "$OUTPUT_APK" --mpp "$MPP" --version "$VERSION" --expected-code "$code" --result "$VW/patch-result.json"
 
       - name: Summarize the build

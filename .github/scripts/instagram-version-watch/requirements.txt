@@ -1,9 +1,16 @@
-# Pinned to the versions in monsivamon/x-lite-apk's uv.lock, which runs the same APKMirror
-# scraping from GitHub Actions. Only apkmirror.py imports these, and only the discover and
-# download commands need them; the other commands are stdlib-only.
-beautifulsoup4==4.15.0
-cloudscraper==1.2.71
-pyparsing==3.3.3
-requests==2.34.2
-requests-toolbelt==1.0.0
-soupsieve==2.9.2
+# gplaydl 2.1.7 is the last release with anonymous dispenser login; 3.x+ needs a linked Google account.
+annotated-doc==0.0.5
+anyio==4.15.1
+certifi==2026.10.19
+gplaydl==2.1.7
+h11==0.16.0
+httpcore==1.0.9
+httpx==0.28.1
+idna==3.20
+markdown-it-py==4.2.0
+mdurl==0.1.2
+pygments==2.21.0
+rich==15.0.0
+shellingham==1.5.4
+typer==0.27.3
+typing-extensions==4.16.0

@@ -18,21 +18,18 @@ import sys
 import zipfile
 from pathlib import Path
 
-import apkmirror
+import play
 
 PACKAGE = "com.instagram.android"
-LISTING_URL = "https://www.apkmirror.com/apk/instagram/instagram-instagram/"
 CONSTANTS = Path("patches/src/main/kotlin/app/crimera/patches/instagram/utils/Constants.kt")
 BRANCH_PREFIX = "instagram-version-watch"
 GH_LIMIT = 1000
 GH_TIMEOUT_SECONDS = 120
 LIST_PATCHES_TIMEOUT_SECONDS = 300
 INSPECT_TIMEOUT_SECONDS = 300
-MAX_VERSIONS_TO_WALK = 5
 # Instagram versions are five numeric parts, for example 452.0.0.48.64. Anything else never
 # reaches a branch name, PR title, issue title or body.
 VERSION_RE = re.compile(r"[0-9]+(\.[0-9]+){4}")
-UNSTABLE_TEXT = re.compile(r"alpha|beta|\brc\b|preview", re.IGNORECASE)
 TARGET_RE = re.compile(
     r'AppTarget\(\s*version\s*=\s*"([^"]+)",\s*versionCodes\s*=\s*mapOf\(\s*ARM64_V8A to (\d+),?\s*\)'
 )
@@ -61,39 +58,6 @@ def checked_version(version: str) -> str:
     if VERSION_RE.fullmatch(version) is None:
         raise WatchError(f"version {version!r} is not five numeric parts; refusing to use it")
     return version
-
-
-def min_android_key(text: str) -> tuple[int, int]:
-    # "Android 9.0+" -> (9, 0). Unknown sorts last, as in the reference.
-    match = re.search(r"Android\s+(\d+)(?:\.(\d+))?", text, re.IGNORECASE)
-    if match is None:
-        return (999, 0)
-    return (int(match.group(1)), int(match.group(2) or 0))
-
-
-def is_stable(row: apkmirror.Version) -> bool:
-    return VERSION_RE.fullmatch(row.version) is not None and UNSTABLE_TEXT.search(row.text) is None
-
-
-def arm64_priority(architecture: str) -> int | None:
-    arch = architecture.lower()
-    # A universal bundle can list arm64 too, and may carry a different versionCode, so it never
-    # counts as an explicit ARM64 variant.
-    if "universal" in arch or "arm64-v8a" not in arch:
-        return None
-    return 1 if "armeabi-v7a" in arch else 2
-
-
-def select_bundle(variants: list[apkmirror.Variant]) -> apkmirror.Variant | None:
-    # Fully ordered, so the same page always yields the same variant. Ties are broken by Android
-    # version, then DPI text, then link.
-    candidates = [v for v in variants if v.is_bundle and arm64_priority(v.architecture) is not None]
-    if not candidates:
-        return None
-    return min(
-        candidates,
-        key=lambda v: (arm64_priority(v.architecture), min_android_key(v.min_android_text), v.dpi_text, v.link),
-    )
 
 
 def parse_targets(text: str, label: str) -> list[tuple[str, int]]:
@@ -160,66 +124,34 @@ def cmd_discover(args) -> None:
     declared_versions = {version for version, _ in declared}
     newest_declared = max(declared_versions, key=version_key)
 
-    rows = apkmirror.get_versions(LISTING_URL)
-    stable = sorted(
-        (row for row in rows if is_stable(row)),
-        key=lambda row: version_key(row.version),
-        reverse=True,
-    )
-    if not stable:
-        raise WatchError(f"no stable five-part versions among {len(rows)} listed rows")
-
-    # Walk newest first. The first release with an ARM64 bundle decides the outcome. A page that
-    # parses but has no ARM64 bundle moves the walk on; a page that fails to parse raises above.
-    walked: list[str] = []
-    found = None
-    for row in stable[:MAX_VERSIONS_TO_WALK]:
-        walked.append(row.version)
-        variant = select_bundle(apkmirror.get_variants(row.link))
-        if variant is not None:
-            found = (row, variant)
-            break
-
-    if found is None:
-        status = "no-arm64-bundle"
-        record_row = stable[0]
-        variant_record = None
+    auth = play.login()
+    version, version_code = play.details(auth)
+    version = checked_version(version)
+    if version in declared_versions:
+        status = "supported"
+    elif version_key(version) <= version_key(newest_declared):
+        status = "not-newer"
     else:
-        record_row, variant = found
-        version = checked_version(record_row.version)
-        if version in declared_versions:
-            status = "supported"
-        elif version_key(version) <= version_key(newest_declared):
-            status = "not-newer"
-        else:
-            status = "candidate"
-        variant_record = {
-            "page_url": variant.link,
-            "architecture": variant.architecture,
-            "min_android": variant.min_android_text,
-            "dpi": variant.dpi_text,
-        }
+        status = "candidate"
 
     record = {
         "status": status,
-        "version": record_row.version,
+        "version": version,
+        "version_code": version_code,
         "newest_declared": newest_declared,
-        "version_url": record_row.link,
-        "variant": variant_record,
-        "walked": walked,
-        "stable_rows": len(stable),
+        "source": "Google Play",
+        "profile": play.PROFILE_NAME,
     }
     write_json(args.out, record)
     write_github_output(
         args.github_output,
         {
             "status": status,
-            "version": record_row.version,
-            "version_url": record_row.link,
-            "variant_page": variant_record["page_url"] if variant_record else "",
+            "version": version,
+            "version_code": str(version_code),
         },
     )
-    print(f"{status}: newest stable ARM64 bundle {record_row.version}; newest declared {newest_declared}")
+    print(f"{status}: Google Play serves {version} ({version_code}); newest declared {newest_declared}")
 
 
 # ---- check-existing -------------------------------------------------------------------------
@@ -340,9 +272,8 @@ def cmd_enumerate(args) -> None:
 
 
 def cmd_download(args) -> None:
-    result = apkmirror.download_bundle(args.variant_page, args.out, checked_version(args.version))
-    result["variant_page"] = args.variant_page
-    result["file"] = args.out.name
+    auth = play.login()
+    result = play.download(auth, checked_version(args.version), args.version_code, args.out)
     write_json(args.result, result)
     print(f"downloaded {args.out.name}: {result['bytes']} bytes, sha256 {result['sha256']}")
 
@@ -402,7 +333,7 @@ def cmd_validate(args) -> None:
         raise WatchError(f"patched APK is {package} {version_name}; expected {PACKAGE} {args.version}")
     if version_code != args.expected_code:
         raise WatchError(f"patched APK versionCode {version_code} differs from the "
-                         f"APKMirror file name code {args.expected_code}")
+                         f"download.json version_code {args.expected_code}")
 
     record = {
         "package": package,
@@ -470,25 +401,24 @@ def load_records(directory: Path) -> dict:
 
 def render_pr(records: dict, source_sha: str, run_url: str, cli_tag: str, cli_sha256: str,
               apkeditor_version: str) -> tuple[str, str]:
-    discover = records["discover"]
-    variant = discover["variant"]
     download = records["download"]
     result = records["patch-result"]
-    version = discover["version"]
+    version = records["discover"]["version"]
     count = len(result["applied"])
     title = f"feat(instagram): add {version} compatibility"
     patch_list = "\n".join(f"- {name}" for name in result["applied"])
+    part_names = ", ".join(part["name"] for part in download["parts"])
 
     body = f"""### Description
 
 Adds Instagram {version} to `COMPATIBILITY_INSTAGRAM` with ARM64_V8A versionCode `{result['version_code']}`.
 
-Automated by the Instagram version watch ({run_url}): built the `dev` bundle at `{source_sha}`, passed resolver lint, and applied all {count} Instagram patches exclusively to the APKMirror bundle. Patch application is not runtime verification.
+Automated by the Instagram version watch ({run_url}): built the `dev` bundle at `{source_sha}`, passed resolver lint, and applied all {count} Instagram patches exclusively to the Google Play bundle. Patch application is not runtime verification.
 
 ### Details
 
-- APKMirror: {discover['version_url']} — variant {variant['page_url']} (`{variant['architecture']}`, {variant['min_android']}, {variant['dpi']})
-- APKM `{download['filename']}`, sha256 `{download['sha256']}`
+- Source: Google Play, anonymous Aurora dispenser token, device profile {download['profile']}
+- Bundle `{download['file']}` ({part_names}), sha256 `{download['sha256']}`
 - Patched APK sha256 `{result['output_sha256']}`, versionCode `{result['version_code']}`
 - Bundle `{result['mpp']}`, sha256 `{result['mpp_sha256']}`
 - Morphe CLI `{cli_tag}` (sha256 `{cli_sha256}`), APKEditor `{apkeditor_version}`
@@ -538,9 +468,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--out", type=Path, required=True)
     p.set_defaults(handler=cmd_enumerate)
 
-    p = sub.add_parser("download", help="download the APKM bundle and check its file name and zip structure")
-    p.add_argument("--variant-page", required=True)
+    p = sub.add_parser("download", help="download the Google Play bundle and check its parts and zip structure")
     p.add_argument("--version", required=True)
+    p.add_argument("--version-code", type=int, required=True)
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--result", type=Path, required=True)
     p.set_defaults(handler=cmd_download)
@@ -579,7 +509,7 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         args.handler(args)
-    except (WatchError, apkmirror.ApkMirrorError, OSError) as error:
+    except (WatchError, play.PlayError, OSError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
     return 0
