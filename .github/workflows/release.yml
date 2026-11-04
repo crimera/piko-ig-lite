@@ -55,7 +55,7 @@ jobs:
 
       # Builds, verifies and tests in prepareCmd, then publishes to GitHub Packages and the release.
       - name: Release
-        uses: cycjimmy/semantic-release-action@v6
+        uses: cycjimmy/semantic-release-action@v8
         id: release
 
       # GitHub offers attestations only on public repositories (or organization plans), so this step
